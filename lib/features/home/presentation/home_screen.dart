@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/fluid_pressable.dart';
+import '../../../core/widgets/frosted_glass.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../doctors/providers/doctors_provider.dart';
 import '../domain/category_model.dart';
@@ -18,17 +20,31 @@ class HomeScreen extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        return FrostedGlassContainer(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          backgroundColor: const Color(0xF2FFFFFF), // 95% translucent
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: SafeArea(
+            top: false,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // iOS drag handle pill
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -45,22 +61,25 @@ class HomeScreen extends ConsumerWidget {
                     final areas = ['All Areas', ...master.areas];
                     final currentArea = ref.watch(selectedAreaProvider);
 
-                    return Expanded(
+                    return SizedBox(
+                      height: 380,
                       child: ListView.separated(
+                        physics: const BouncingScrollPhysics(),
                         itemCount: areas.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.borderSoft),
                         itemBuilder: (context, index) {
                           final area = areas[index];
                           final isSelected = (area == 'All Areas' && currentArea == null) ||
                               currentArea == area;
 
                           return ListTile(
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             title: Text(
                               area,
                               style: TextStyle(
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 color: isSelected ? AppColors.primary : AppColors.headingText,
+                                fontSize: 15,
                               ),
                             ),
                             trailing: isSelected
@@ -82,7 +101,10 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                   error: (error, stack) => const Text('Could not load areas. Please try again.'),
                 ),
               ],
@@ -103,47 +125,69 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: GestureDetector(
+      extendBodyBehindAppBar: true,
+      appBar: FrostedGlassAppBar(
+        title: FluidPressable(
           onTap: () => _showLocationPicker(context, ref),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.mapPin, size: 18, color: AppColors.primary),
-              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(LucideIcons.mapPin, size: 16, color: AppColors.primary),
+              ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
                       Text(
                         selectedArea != null ? '$selectedArea, $selectedCity' : selectedCity,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.headingText),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.headingText),
                       ),
+                      const SizedBox(width: 3),
                       const Icon(LucideIcons.chevronDown, size: 14, color: AppColors.bodyText),
                     ],
                   ),
-                  const Text('Service Area', style: TextStyle(fontSize: 11, color: AppColors.bodyText)),
+                  Text('Service Area', style: Theme.of(context).textTheme.labelSmall),
                 ],
               ),
             ],
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.user),
-            onPressed: () {
-              if (authState.status == AuthStatus.authenticated) {
-                context.push('/profile');
-              } else {
-                context.push('/login');
-              }
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FluidPressable(
+              onTap: () {
+                if (authState.status == AuthStatus.authenticated) {
+                  context.push('/profile');
+                } else {
+                  context.push('/login');
+                }
+              },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSoft,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderSoft),
+                ),
+                child: const Icon(LucideIcons.user, size: 18, color: AppColors.primary),
+              ),
+            ),
           ),
         ],
       ),
       body: RefreshIndicator(
+        displacement: 90,
         onRefresh: () async {
           ref.invalidate(categoriesProvider);
           ref.invalidate(symptomsProvider);
@@ -151,23 +195,23 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(doctorsListProvider);
         },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 12, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hero Banner with Gradient
+              // Apple-style Fluid Hero Banner
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   gradient: AppColors.brandGradient,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x400891B2),
-                      blurRadius: 15,
-                      offset: Offset(0, 6),
+                      color: Color(0x330891B2),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
                     ),
                   ],
                 ),
@@ -177,135 +221,160 @@ class HomeScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0x33FFFFFF),
+                        color: const Color(0x33FFFFFF), // Translucent glass pill
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0x4DFFFFFF)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(LucideIcons.shieldCheck, color: Colors.white, size: 14),
-                          SizedBox(width: 4),
+                          SizedBox(width: 5),
                           Text(
-                            'Certified Specialists',
+                            'State Council Verified Specialists',
                             style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     const Text(
-                      'Premium Home & Online\nPhysiotherapy Care',
+                      'Premium Home &\nOnline Physiotherapy',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        height: 1.25,
+                        letterSpacing: -0.6,
+                        height: 1.2,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Get diagnosed and treated by vetted physiotherapists at home or via video consult.',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                      'Accredited therapists bringing clinical electrotherapy, manual rehabilitation, and postural exercises to your doorstep.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => context.go('/doctors'),
-                      icon: const Icon(LucideIcons.search, size: 16, color: AppColors.primary),
-                      label: const Text('Find Doctors Near You'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
-                        elevation: 0,
+                    const SizedBox(height: 18),
+                    FluidPressable(
+                      onTap: () => context.go('/doctors'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1F000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(LucideIcons.search, size: 16, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text(
+                              'Find Doctors Near You',
+                              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Consultation Mode Filter Buttons
+              // Consultation Mode Filter Buttons with tactile press
               Row(
                 children: [
                   Expanded(
-                    child: _ModeSelectCard(
-                      icon: LucideIcons.home,
-                      title: 'Home Visits',
-                      subtitle: 'Doctor visits you',
-                      isSelected: selectedMode == 'home',
+                    child: FluidPressable(
                       onTap: () {
                         final newMode = selectedMode == 'home' ? 'all' : 'home';
                         ref.read(selectedModeProvider.notifier).state = newMode;
                         ref.read(doctorFilterProvider.notifier).update((s) => s.copyWith(mode: newMode));
                         context.go('/doctors');
                       },
+                      child: _ModeSelectCard(
+                        icon: LucideIcons.home,
+                        title: 'Home Visits',
+                        subtitle: 'Doctor travels to you',
+                        isSelected: selectedMode == 'home',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _ModeSelectCard(
-                      icon: LucideIcons.video,
-                      title: 'Video Consult',
-                      subtitle: 'HD Telehealth 1-on-1',
-                      isSelected: selectedMode == 'online',
+                    child: FluidPressable(
                       onTap: () {
                         final newMode = selectedMode == 'online' ? 'all' : 'online';
                         ref.read(selectedModeProvider.notifier).state = newMode;
                         ref.read(doctorFilterProvider.notifier).update((s) => s.copyWith(mode: newMode));
                         context.go('/doctors');
                       },
+                      child: _ModeSelectCard(
+                        icon: LucideIcons.video,
+                        title: 'Video Consult',
+                        subtitle: '1-on-1 HD Telehealth',
+                        isSelected: selectedMode == 'online',
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 28),
 
-              // Specialty Categories
+              // Specialty Categories Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Clinical Specialties', style: Theme.of(context).textTheme.titleLarge),
-                  TextButton(
-                    onPressed: () => context.go('/doctors'),
-                    child: const Text('View All', style: TextStyle(color: AppColors.primary)),
+                  FluidPressable(
+                    onTap: () => context.go('/doctors'),
+                    child: const Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               categoriesAsync.when(
                 data: (categories) {
                   return SizedBox(
-                    height: 155,
+                    height: 165,
                     child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
                       scrollDirection: Axis.horizontal,
                       itemCount: categories.length,
                       separatorBuilder: (context, index) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final cat = categories[index];
-                        return _CategoryCard(
-                          category: cat,
+                        return FluidPressable(
                           onTap: () => context.push('/categories/${cat.slug}', extra: cat),
+                          child: _CategoryCard(category: cat),
                         );
                       },
                     ),
                   );
                 },
-                loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
-                error: (e, _) => Text('Error loading categories: $e'),
+                loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                error: (error, stack) => Text('Error loading categories: $error'),
               ),
               const SizedBox(height: 28),
 
-              // Common Conditions & Symptoms
+              // Common Conditions & Symptoms Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Common Conditions', style: Theme.of(context).textTheme.titleLarge),
-                  TextButton(
-                    onPressed: () => context.go('/doctors'),
-                    child: const Text('View All', style: TextStyle(color: AppColors.primary)),
+                  FluidPressable(
+                    onTap: () => context.go('/doctors'),
+                    child: const Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               symptomsAsync.when(
                 data: (symptoms) {
                   return ListView.separated(
@@ -315,94 +384,115 @@ class HomeScreen extends ConsumerWidget {
                     separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final sym = symptoms[index];
-                      return _ConditionTile(
-                        symptom: sym,
+                      return FluidPressable(
                         onTap: () => context.push('/conditions/${sym.slug}', extra: sym),
+                        child: _ConditionTile(symptom: sym),
                       );
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Text('Error loading conditions: $e'),
+                loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                error: (error, stack) => Text('Error loading conditions: $error'),
               ),
               const SizedBox(height: 28),
 
               // Caretaker Request Assistance Card
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.borderSoft),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Color(0x1F0891B2),
-                        shape: BoxShape.circle,
+              FluidPressable(
+                onTap: () => context.push('/caretaker'),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderSoft),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x08000000),
+                        blurRadius: 16,
+                        offset: Offset(0, 4),
                       ),
-                      child: const Icon(LucideIcons.heartHandshake, color: AppColors.primary, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Need a Home Caretaker?',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.headingText),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Elderly care, stroke patient assistance, and trained nursing attendants.',
-                            style: TextStyle(color: AppColors.bodyText, fontSize: 12),
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              backgroundColor: AppColors.primary,
-                            ),
-                            onPressed: () => context.push('/caretaker'),
-                            child: const Text('Request Assistance', style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // Join as a Physiotherapist (Careers) Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+                    ],
+                  ),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.stethoscope, color: AppColors.accentTeal, size: 32),
-                      const SizedBox(width: 14),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceSoft,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.borderSoft),
+                        ),
+                        child: const Icon(LucideIcons.heartHandshake, color: AppColors.primary, size: 26),
+                      ),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Are you a Physiotherapist?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            const SizedBox(height: 2),
-                            const Text('Join PhysioPrime clinical network & grow your practice.', style: TextStyle(fontSize: 12, color: AppColors.bodyText)),
+                            const Text(
+                              'Need a Home Caretaker?',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.headingText),
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'Trained attendants for post-stroke recovery, mobility assistance & elderly support.',
+                              style: TextStyle(color: AppColors.bodyText, fontSize: 12, height: 1.35),
+                            ),
+                            const SizedBox(height: 8),
+                            const Row(
+                              children: [
+                                Text(
+                                  'Request Attendant',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(LucideIcons.arrowRight, size: 13, color: AppColors.primary),
+                              ],
+                            ),
                           ],
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.push('/careers'),
-                        child: const Text('Join Us', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Join as a Physiotherapist (Careers) Card
+              FluidPressable(
+                onTap: () => context.push('/careers'),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.borderSoft),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceSoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(LucideIcons.stethoscope, color: AppColors.accentTeal, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Are you a Physiotherapist?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text('Join PhysioPrime clinical network', style: TextStyle(fontSize: 12, color: AppColors.bodyText)),
+                          ],
+                        ),
+                      ),
+                      const Icon(LucideIcons.chevronRight, size: 18, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -416,40 +506,44 @@ class _ModeSelectCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool isSelected;
-  final VoidCallback onTap;
 
   const _ModeSelectCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.isSelected,
-    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surfaceSoft : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderSoft,
-            width: isSelected ? 2 : 1,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isSelected ? AppColors.surfaceSoft : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isSelected ? AppColors.primary : AppColors.borderSoft,
+          width: isSelected ? 1.8 : 0.8,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: isSelected ? AppColors.primary : AppColors.bodyText, size: 24),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.headingText)),
-            const SizedBox(height: 2),
-            Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.bodyText)),
-          ],
-        ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: isSelected ? AppColors.primary : AppColors.bodyText, size: 22),
+          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.headingText)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.bodyText)),
+        ],
       ),
     );
   }
@@ -457,57 +551,55 @@ class _ModeSelectCard extends StatelessWidget {
 
 class _CategoryCard extends StatelessWidget {
   final CategoryModel category;
-  final VoidCallback onTap;
 
-  const _CategoryCard({required this.category, required this.onTap});
+  const _CategoryCard({required this.category});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 130,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderSoft),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              child: category.image != null
-                  ? CachedNetworkImage(
-                      imageUrl: category.image!,
-                      height: 80,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: AppColors.surfaceSoft),
-                      errorWidget: (context, url, error) => Container(color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary)),
-                    )
-                  : Container(
-                      height: 80,
-                      color: AppColors.surfaceSoft,
-                      child: const Center(child: Icon(LucideIcons.activity, color: AppColors.primary)),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    category.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.headingText),
+    return Container(
+      width: 136,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderSoft, width: 0.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+            child: category.image != null
+                ? CachedNetworkImage(
+                    imageUrl: category.image!,
+                    height: 88,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: AppColors.surfaceSoft),
+                    errorWidget: (context, url, error) => Container(color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary)),
+                  )
+                : Container(
+                    height: 88,
+                    color: AppColors.surfaceSoft,
+                    child: const Center(child: Icon(LucideIcons.activity, color: AppColors.primary)),
                   ),
-                ],
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              category.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.headingText, height: 1.25),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -515,37 +607,47 @@ class _CategoryCard extends StatelessWidget {
 
 class _ConditionTile extends StatelessWidget {
   final SymptomModel symptom;
-  final VoidCallback onTap;
 
-  const _ConditionTile({required this.symptom, required this.onTap});
+  const _ConditionTile({required this.symptom});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSoft, width: 0.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x05000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         leading: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child: symptom.image != null
               ? CachedNetworkImage(
                   imageUrl: symptom.image!,
-                  width: 52,
-                  height: 52,
+                  width: 50,
+                  height: 50,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(width: 52, height: 52, color: AppColors.surfaceSoft),
-                  errorWidget: (context, url, error) => Container(width: 52, height: 52, color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary, size: 20)),
+                  placeholder: (context, url) => Container(width: 50, height: 50, color: AppColors.surfaceSoft),
+                  errorWidget: (context, url, error) => Container(width: 50, height: 50, color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary, size: 20)),
                 )
-              : Container(width: 52, height: 52, color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary, size: 20)),
+              : Container(width: 50, height: 50, color: AppColors.surfaceSoft, child: const Icon(LucideIcons.activity, color: AppColors.primary, size: 20)),
         ),
-        title: Text(symptom.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        title: Text(symptom.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.headingText)),
         subtitle: Text(
           symptom.description,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: AppColors.bodyText),
+          style: const TextStyle(fontSize: 12, color: AppColors.bodyText, height: 1.3),
         ),
-        trailing: const Icon(LucideIcons.chevronRight, size: 18, color: Colors.grey),
+        trailing: const Icon(LucideIcons.chevronRight, size: 16, color: Colors.grey),
       ),
     );
   }

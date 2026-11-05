@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -192,28 +193,45 @@ class ScaffoldWithNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _calculateSelectedIndex(context),
-        onDestinationSelected: (idx) => _onItemTapped(idx, context),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(LucideIcons.home),
-            label: 'Home',
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xE6FFFFFF), // 90% translucent white
+              border: Border(
+                top: BorderSide(color: Color(0x14000000), width: 0.5),
+              ),
+            ),
+            child: NavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              indicatorColor: const Color(0x1F0891B2),
+              selectedIndex: _calculateSelectedIndex(context),
+              onDestinationSelected: (idx) => _onItemTapped(idx, context),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(LucideIcons.home),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.stethoscope),
+                  label: 'Doctors',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.calendar),
+                  label: 'Appointments',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.user),
+                  label: 'Dashboard',
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.stethoscope),
-            label: 'Doctors',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.calendar),
-            label: 'Appointments',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.user),
-            label: 'Dashboard',
-          ),
-        ],
+        ),
       ),
     );
   }

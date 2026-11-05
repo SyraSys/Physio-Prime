@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/fluid_pressable.dart';
+import '../../../core/widgets/frosted_glass.dart';
 import '../../home/providers/home_provider.dart';
 import '../providers/doctors_provider.dart';
 import 'widgets/doctor_card.dart';
@@ -25,22 +27,36 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
   void _showFilterModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Consumer(
           builder: (context, ref, _) {
             final filter = ref.watch(doctorFilterProvider);
             final locationsAsync = ref.watch(locationsProvider);
 
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+            return FrostedGlassContainer(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              backgroundColor: const Color(0xF7FFFFFF), // 97% translucent
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: SafeArea(
+                top: false,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // iOS drag handle pill
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -50,14 +66,14 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                             ref.read(doctorFilterProvider.notifier).state = const DoctorFilterState();
                             Navigator.pop(ctx);
                           },
-                          child: const Text('Reset', style: TextStyle(color: AppColors.error)),
+                          child: const Text('Reset', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
 
                     // Mode selection
-                    const Text('Consultation Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Consultation Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.headingText)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -84,7 +100,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                     const SizedBox(height: 16),
 
                     // Gender selection
-                    const Text('Doctor Gender', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Doctor Gender', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.headingText)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -109,7 +125,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                     const SizedBox(height: 16),
 
                     // Area selection
-                    const Text('Service Area', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Service Area', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.headingText)),
                     const SizedBox(height: 8),
                     locationsAsync.when(
                       data: (master) {
@@ -117,8 +133,8 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                           initialValue: filter.area,
                           hint: const Text('Select Area (Nagpur)'),
                           decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           items: [
                             const DropdownMenuItem(value: null, child: Text('All Areas')),
@@ -136,10 +152,18 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Apply Filters'),
+                    FluidPressable(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text('Apply Filters', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                      ),
                     ),
                   ],
                 ),
@@ -157,39 +181,60 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
     final filter = ref.watch(doctorFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      extendBodyBehindAppBar: true,
+      appBar: FrostedGlassAppBar(
         title: const Text('Find Physiotherapists'),
         actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(LucideIcons.slidersHorizontal),
-                if (filter.area != null || (filter.mode != null && filter.mode != 'all') || (filter.gender != null && filter.gender != 'all'))
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                    ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FluidPressable(
+              onTap: () => _showFilterModal(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (filter.area != null || (filter.mode != null && filter.mode != 'all') || (filter.gender != null && filter.gender != 'all'))
+                      ? AppColors.surfaceSoft
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: (filter.area != null || (filter.mode != null && filter.mode != 'all'))
+                        ? AppColors.primary
+                        : Colors.transparent,
                   ),
-              ],
+                ),
+                child: Stack(
+                  children: [
+                    const Icon(LucideIcons.slidersHorizontal, size: 20),
+                    if (filter.area != null || (filter.mode != null && filter.mode != 'all') || (filter.gender != null && filter.gender != 'all'))
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-            onPressed: () => _showFilterModal(context),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar
+          SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight + 8),
+
+          // Search Bar with Apple inset look
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search doctors, conditions, or specialties...',
-                prefixIcon: const Icon(LucideIcons.search, size: 20),
+                hintText: 'Search doctors, conditions, or treatments...',
+                hintStyle: const TextStyle(fontSize: 13, color: AppColors.bodyText),
+                prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.primary),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(LucideIcons.x, size: 16),
@@ -201,7 +246,11 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                     : null,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.borderSoft),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: AppColors.borderSoft),
                 ),
                 filled: true,
@@ -219,6 +268,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
               height: 36,
               margin: const EdgeInsets.only(bottom: 8),
               child: ListView(
+                physics: const BouncingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
@@ -246,7 +296,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
               ),
             ),
 
-          // Doctor List
+          // Doctor List with iOS BouncingScrollPhysics
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async => ref.refresh(doctorsListProvider),
@@ -259,15 +309,15 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(LucideIcons.userX, size: 56, color: Colors.grey),
-                            const SizedBox(height: 16),
+                            const Icon(LucideIcons.userX, size: 52, color: Colors.grey),
+                            const SizedBox(height: 14),
                             const Text(
                               'No Physiotherapists Found',
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Try clearing your active filters or searching for another condition.',
+                              'Try clearing active filters or searching for another condition.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.bodyText, fontSize: 13),
                             ),
@@ -286,7 +336,8 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                     itemCount: doctors.length,
                     itemBuilder: (context, index) {
                       return DoctorCard(doctor: doctors[index]);
@@ -300,7 +351,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(LucideIcons.alertTriangle, color: AppColors.error, size: 48),
+                        const Icon(LucideIcons.alertTriangle, color: AppColors.error, size: 44),
                         const SizedBox(height: 12),
                         const Text('Could not load doctors', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
