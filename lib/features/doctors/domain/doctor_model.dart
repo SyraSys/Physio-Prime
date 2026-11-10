@@ -65,6 +65,9 @@ class DoctorModel {
   final List<String> expertise;
   final List<String> treatments;
   final List<String> categories;
+  final String? nextAvailable;
+  final num? minFee;
+  final num? maxFee;
 
   const DoctorModel({
     required this.id,
@@ -92,9 +95,20 @@ class DoctorModel {
     this.expertise = const [],
     this.treatments = const [],
     this.categories = const [],
+    this.nextAvailable,
+    this.minFee,
+    this.maxFee,
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
+    num? parsedMinFee;
+    num? parsedMaxFee;
+    if (json['feeRange'] is Map<String, dynamic>) {
+      final fr = json['feeRange'] as Map<String, dynamic>;
+      parsedMinFee = fr['min'] is num ? fr['min'] : num.tryParse(fr['min']?.toString() ?? '');
+      parsedMaxFee = fr['max'] is num ? fr['max'] : num.tryParse(fr['max']?.toString() ?? '');
+    }
+
     return DoctorModel(
       id: json['id']?.toString() ?? json['slug']?.toString() ?? '',
       slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
@@ -121,8 +135,37 @@ class DoctorModel {
       expertise: (json['expertise'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       treatments: (json['treatments'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       categories: (json['categories'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      nextAvailable: json['nextAvailable']?.toString(),
+      minFee: parsedMinFee,
+      maxFee: parsedMaxFee,
     );
   }
 
-  num get startingFee => fees.home > 0 ? fees.home : (fees.online > 0 ? fees.online : 799);
+  num get startingFee => minFee ?? (fees.online > 0 ? fees.online : (fees.home > 0 ? fees.home : 1));
+
+  String get consultationFeeDisplay {
+    if (minFee != null && maxFee != null) {
+      if (minFee == maxFee) {
+        return '₹$maxFee/session';
+      }
+      return '₹$minFee-1,000 / session';
+    }
+    if (fees.home > 0 && fees.online > 0 && fees.home != fees.online) {
+      final low = fees.online < fees.home ? fees.online : fees.home;
+      final high = fees.online > fees.home ? fees.online : fees.home;
+      return '₹$low-$high / session';
+    }
+    return '₹${fees.home}/session';
+  }
+
+  String get nextAvailableDisplay {
+    if (nextAvailable == null || nextAvailable!.isEmpty) return 'Oct 5';
+    try {
+      final dt = DateTime.parse(nextAvailable!);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[dt.month - 1]} ${dt.day}';
+    } catch (_) {
+      return nextAvailable!;
+    }
+  }
 }
