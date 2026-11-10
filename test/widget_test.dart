@@ -42,18 +42,25 @@ void main() {
         'id': 'doc-tarannum-sayyed',
         'slug': 'doc-tarannum-sayyed',
         'name': 'Dr. Tarannum Sayyed',
-        'title': 'Senior Consultant',
-        'specialty': 'Orthopedic Specialist',
+        'title': 'Senior Consultant Physiotherapist',
+        'specialty': 'Orthopedic & Post-Op Rehab Specialist',
         'rating': 4.9,
-        'fees': {'home': 1000, 'online': 599},
+        'reviewCount': 142,
+        'experienceYears': 6,
+        'patientsTreated': 1250,
+        'fees': {'home': 1000, 'online': 1},
+        'feeRange': {'min': 1, 'max': 1000},
+        'nextAvailable': '2026-10-05',
         'homeVisitsEnabled': true,
       };
 
       final doc = DoctorModel.fromJson(json);
       expect(doc.name, 'Dr. Tarannum Sayyed');
       expect(doc.fees.home, 1000);
-      expect(doc.fees.online, 599);
-      expect(doc.startingFee, 1000);
+      expect(doc.fees.online, 1);
+      expect(doc.startingFee, 1);
+      expect(doc.consultationFeeDisplay, '₹1-1,000 / session');
+      expect(doc.nextAvailableDisplay, 'Oct 5');
     });
   });
 }
