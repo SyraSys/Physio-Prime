@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,12 +42,13 @@ class ApiClient {
       ),
     );
 
-    // Logging interceptor for debugging
+    // Logging interceptor for debugging (suppress verbose browser CORS stack traces on web)
     _dio.interceptors.add(
       PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
+        requestHeader: !kIsWeb,
+        requestBody: !kIsWeb,
+        responseBody: !kIsWeb,
+        error: !kIsWeb,
         compact: true,
       ),
     );
