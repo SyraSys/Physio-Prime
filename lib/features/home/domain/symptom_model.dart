@@ -8,6 +8,7 @@ class SymptomModel {
   final String? treatment;
   final List<String> popularFor;
   final String? recoveryEstimate;
+  final String? department;
   final String? image;
   final int? sortOrder;
 
@@ -21,6 +22,7 @@ class SymptomModel {
     this.treatment,
     this.popularFor = const [],
     this.recoveryEstimate,
+    this.department,
     this.image,
     this.sortOrder,
   });
@@ -46,6 +48,11 @@ class SymptomModel {
       parsedPopularFor = [json['popularFor'].toString()];
     }
 
+    String? rawImage = json['image']?.toString();
+    if (rawImage != null && rawImage.startsWith('/')) {
+      rawImage = 'https://www.physio-prime.in$rawImage';
+    }
+
     return SymptomModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -56,7 +63,10 @@ class SymptomModel {
       treatment: json['treatment']?.toString(),
       popularFor: parsedPopularFor,
       recoveryEstimate: json['recoveryEstimate']?.toString(),
-      image: json['image']?.toString(),
+      department: (parsedPopularFor.isNotEmpty ? parsedPopularFor.first : null) ??
+          json['department']?.toString() ??
+          'Musculoskeletal / Orthopedic',
+      image: rawImage,
       sortOrder: json['sortOrder'] is int ? json['sortOrder'] : int.tryParse(json['sortOrder']?.toString() ?? ''),
     );
   }
