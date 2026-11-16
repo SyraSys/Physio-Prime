@@ -1,12 +1,20 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/fluid_pressable.dart';
 import '../../../core/widgets/frosted_glass.dart';
+import '../../../core/widgets/state_views.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../domain/appointment_model.dart';
+import '../providers/appointments_provider.dart';
+import 'widgets/appointment_card.dart';
 
+/// My Appointments: Upcoming / Completed / Cancelled tabs backed by
+/// `GET /appointments`.
 class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
 
@@ -15,17 +23,27 @@ class AppointmentsScreen extends ConsumerStatefulWidget {
 }
 
 class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
-  int _selectedTab = 0; // 0: Upcoming, 1: Completed, 2: Cancelled
+  AppointmentGroup _tab = AppointmentGroup.upcoming;
+
+  Future<void> _refresh() async {
+    ref.invalidate(appointmentsProvider);
+    try {
+      await ref.read(appointmentsProvider.future);
+    } catch (_) {
+      // Error state is rendered by the list.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(authStateProvider.select((s) => s.status));
+    final signedIn = ref.read(authRepositoryProvider).isAuthenticated;
+    final topPadding = MediaQuery.paddingOf(context).top + kToolbarHeight;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: FrostedGlassAppBar(
-        title: const Text(
-          'My Appointments',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.headingText),
-        ),
+        title: const Text('My Appointments'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -42,7 +60,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   children: [
                     Icon(LucideIcons.plus, size: 14, color: AppColors.primary),
                     SizedBox(width: 4),
-                    Text('Book Slot', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11)),
+                    Text(
+                      'Book',
+                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -50,356 +71,165 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 12, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // iOS Segmented Tab Switcher
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.borderSoft),
+      body: !signedIn
+          ? Padding(
+              padding: EdgeInsets.only(top: topPadding),
+              child: const SignInPromptView(
+                title: 'Sign in to see your appointments',
+                message: 'Book, reschedule and join video consultations from one place.',
               ),
-              child: Row(
-                children: [
-                  _SegmentButton(
-                    title: 'Upcoming (1)',
-                    isSelected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
-                  ),
-                  _SegmentButton(
-                    title: 'Completed (1)',
-                    isSelected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
-                  ),
-                  _SegmentButton(
-                    title: 'Cancelled',
-                    isSelected: _selectedTab == 2,
-                    onTap: () => setState(() => _selectedTab = 2),
-                  ),
-                ],
+            )
+          : _buildSignedIn(topPadding),
+    );
+  }
+
+  Widget _buildSignedIn(double topPadding) {
+    final all = ref.watch(appointmentsProvider);
+    final counts = <AppointmentGroup, int>{
+      for (final g in AppointmentGroup.values) g: all.value?.where((a) => a.group == g).length ?? 0,
+    };
+    final tabData = ref.watch(appointmentsByGroupProvider(_tab));
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      edgeOffset: topPadding,
+      onRefresh: _refresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: _SegmentedTabs(
+                selected: _tab,
+                counts: all.hasValue ? counts : null,
+                onChanged: (g) => setState(() => _tab = g),
               ),
             ),
-            const SizedBox(height: 18),
-
-            if (_selectedTab == 0) ...[
-              // Upcoming Appointments with Dr. Tarannum Sayyed
-              _AppointmentCard(
-                doctorName: 'Dr. Tarannum Sayyed',
-                specialty: 'Orthopedic & Post-Op Rehab Specialist',
-                date: 'Tomorrow, Oct 12',
-                time: '10:30 AM - 11:15 AM',
-                mode: 'Home Visit',
-                modeIcon: LucideIcons.home,
-                modeColor: const Color(0xFF047857),
-                modeBg: const Color(0xFFD1FAE5),
-                status: 'Confirmed',
-                address: 'Plot 42, Civil Lines, Nagpur',
-                sessionCost: '₹1,000 (Paid Online)',
-                primaryActionTitle: 'Track Therapist Arrival',
-                primaryActionIcon: LucideIcons.navigation,
-                onPrimaryAction: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Dr. Tarannum will depart at 10:00 AM. Live GPS tracking will activate then.')),
-                  );
-                },
-              ),
-            ] else if (_selectedTab == 1) ...[
-              _PastAppointmentCard(
-                doctorName: 'Dr. Tarannum Sayyed',
-                specialty: 'Orthopedic & Knee Rehab Specialist',
-                date: 'Oct 05, 2026',
-                mode: 'Home Visit',
-                notes: 'Post-op quadriceps activation completed. Range of motion improved by 15 degrees.',
-              ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(32),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderSoft),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(LucideIcons.calendarX, size: 42, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text('No Cancelled Appointments', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.headingText)),
-                    SizedBox(height: 4),
-                    Text('All your booked sessions are active or successfully completed.', style: TextStyle(fontSize: 12, color: AppColors.bodyText), textAlign: TextAlign.center),
-                  ],
-                ),
+          ),
+          ...tabData.when(
+            skipLoadingOnRefresh: true,
+            loading: () => [
+              const SliverFillRemaining(hasScrollBody: false, child: LoadingView(message: 'Loading appointments…')),
+            ],
+            error: (e, _) => [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: ErrorView(error: e, onRetry: _refresh),
               ),
             ],
-          ],
-        ),
+            data: (items) {
+              if (items.isEmpty) {
+                return [SliverFillRemaining(hasScrollBody: false, child: _EmptyTab(group: _tab))];
+              }
+              return [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                  sliver: SliverList.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => AppointmentCard(appointment: items[i]),
+                  ),
+                ),
+              ];
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SegmentButton extends StatelessWidget {
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
+class _SegmentedTabs extends StatelessWidget {
+  final AppointmentGroup selected;
+  final Map<AppointmentGroup, int>? counts;
+  final ValueChanged<AppointmentGroup> onChanged;
 
-  const _SegmentButton({required this.title, required this.isSelected, required this.onTap});
+  const _SegmentedTabs({required this.selected, required this.counts, required this.onChanged});
 
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: FluidPressable(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : AppColors.bodyText,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  String _label(AppointmentGroup g) {
+    final base = switch (g) {
+      AppointmentGroup.upcoming => 'Upcoming',
+      AppointmentGroup.completed => 'Completed',
+      AppointmentGroup.cancelled => 'Cancelled',
+    };
+    final c = counts?[g];
+    return c == null || c == 0 ? base : '$base ($c)';
   }
-}
-
-class _AppointmentCard extends StatelessWidget {
-  final String doctorName;
-  final String specialty;
-  final String date;
-  final String time;
-  final String mode;
-  final IconData modeIcon;
-  final Color modeColor;
-  final Color modeBg;
-  final String status;
-  final String address;
-  final String sessionCost;
-  final String primaryActionTitle;
-  final IconData primaryActionIcon;
-  final VoidCallback onPrimaryAction;
-
-  const _AppointmentCard({
-    required this.doctorName,
-    required this.specialty,
-    required this.date,
-    required this.time,
-    required this.mode,
-    required this.modeIcon,
-    required this.modeColor,
-    required this.modeBg,
-    required this.status,
-    required this.address,
-    required this.sessionCost,
-    required this.primaryActionTitle,
-    required this.primaryActionIcon,
-    required this.onPrimaryAction,
-  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.borderSoft),
-        boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 14, offset: Offset(0, 4)),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(color: modeBg, borderRadius: BorderRadius.circular(10)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(modeIcon, size: 12, color: modeColor),
-                    const SizedBox(width: 4),
-                    Text(mode, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: modeColor)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
-                child: Text(status, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(doctorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.headingText)),
-          const SizedBox(height: 2),
-          Text(specialty, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(LucideIcons.calendar, size: 14, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(date, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.headingText)),
-                    const SizedBox(width: 8),
-                    const Text('•', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(width: 8),
-                    Text(time, style: const TextStyle(fontSize: 12, color: AppColors.bodyText)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(LucideIcons.mapPin, size: 14, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(address, style: const TextStyle(fontSize: 11, color: AppColors.bodyText))),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: FluidPressable(
-                  onTap: onPrimaryAction,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 11),
+          for (final g in AppointmentGroup.values)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: g == selected,
+                child: GestureDetector(
+                  onTap: () => onChanged(g),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: g == selected ? AppColors.primaryGradient : null,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(primaryActionIcon, size: 14, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Text(primaryActionTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FluidPressable(
-                onTap: () {
-                  showCupertinoModalPopup(
-                    context: context,
-                    builder: (ctx) => CupertinoActionSheet(
-                      title: Text('Manage Appointment with $doctorName'),
-                      actions: [
-                        CupertinoActionSheetAction(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            context.go('/doctors');
-                          },
-                          child: const Text('Reschedule Slot'),
-                        ),
-                        CupertinoActionSheetAction(
-                          isDestructiveAction: true,
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Refund of ₹1,000 initiated. Cancellation processed.')),
-                            );
-                          },
-                          child: const Text('Cancel Session'),
-                        ),
-                      ],
-                      cancelButton: CupertinoActionSheetAction(
-                        child: const Text('Close'),
-                        onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      _label(g),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: g == selected ? Colors.white : AppColors.bodyText,
                       ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(11),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(LucideIcons.moreHorizontal, size: 16, color: AppColors.headingText),
                 ),
               ),
-            ],
-          ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _PastAppointmentCard extends StatelessWidget {
-  final String doctorName;
-  final String specialty;
-  final String date;
-  final String mode;
-  final String notes;
-
-  const _PastAppointmentCard({
-    required this.doctorName,
-    required this.specialty,
-    required this.date,
-    required this.mode,
-    required this.notes,
-  });
+class _EmptyTab extends StatelessWidget {
+  final AppointmentGroup group;
+  const _EmptyTab({required this.group});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(doctorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.headingText)),
-              Text(date, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(specialty, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10)),
-            child: Text(notes, style: const TextStyle(fontSize: 11, color: AppColors.bodyText, height: 1.3)),
-          ),
-        ],
-      ),
-    );
+    switch (group) {
+      case AppointmentGroup.upcoming:
+        return EmptyStateView(
+          icon: LucideIcons.calendar,
+          title: 'No upcoming appointments',
+          message: 'Book a home visit or video consultation with a verified physiotherapist.',
+          actionLabel: 'Find a physiotherapist',
+          onAction: () => context.go('/doctors'),
+        );
+      case AppointmentGroup.completed:
+        return const EmptyStateView(
+          icon: LucideIcons.checkCircle,
+          title: 'No completed sessions yet',
+          message: 'Completed consultations will appear here so you can review them.',
+        );
+      case AppointmentGroup.cancelled:
+        return const EmptyStateView(
+          icon: LucideIcons.calendarX,
+          title: 'No cancelled appointments',
+          message: 'Appointments you cancel will be listed here.',
+        );
+    }
   }
 }

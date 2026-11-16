@@ -20,6 +20,17 @@ import '../../features/content/presentation/blog_list_screen.dart';
 import '../../features/content/presentation/static_pages.dart';
 import '../../features/appointments/presentation/appointments_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/appointments/domain/appointment_model.dart';
+import '../../features/appointments/presentation/appointment_detail_screen.dart';
+import '../../features/booking/domain/booking_request_model.dart';
+import '../../features/booking/domain/booking_response_model.dart';
+import '../../features/booking/presentation/booking_checkout_screen.dart';
+import '../../features/booking/presentation/booking_slots_screen.dart';
+import '../../features/booking/presentation/booking_success_screen.dart';
+import '../../features/dashboard/presentation/notifications_screen.dart';
+import '../../features/dashboard/presentation/prescriptions_screen.dart';
+import '../../features/telehealth/presentation/video_call_screen.dart';
+import '../widgets/state_views.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -132,31 +143,84 @@ final appRouter = GoRouter(
       builder: (context, state) => const PricingScreen(),
     ),
 
-    // Developer 2 Hand-off Placeholder
+    // Developer 2: Booking, Payments, Appointments, Telehealth & Dashboard
     GoRoute(
       path: '/booking-slots',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
-        final extra = state.extra is Map<String, dynamic> ? state.extra as Map<String, dynamic> : {};
-        return Scaffold(
-          appBar: AppBar(title: const Text('Select Booking Slot')),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(LucideIcons.calendar, size: 56, color: Colors.cyan),
-                  const SizedBox(height: 16),
-                  Text('Slot Picker: ${extra['doctorName'] ?? 'Doctor'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  const Text('Developer 2 will implement the dynamic slot selection and Razorpay checkout engine here.', textAlign: TextAlign.center),
-                ],
-              ),
-            ),
-          ),
-        );
+        final doctor = BookingDoctorInfo.fromRouteArgs(state.extra, state.uri.queryParameters);
+        if (doctor == null) {
+          return const MissingRouteDataScreen(
+            title: 'Select a Slot',
+            message: 'Please choose a physiotherapist first, then tap "Book Consultation Slot".',
+          );
+        }
+        return BookingSlotsScreen(doctor: doctor);
       },
+    ),
+    GoRoute(
+      path: '/booking-checkout',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final selection = state.extra;
+        if (selection is! BookingSelection) {
+          return const MissingRouteDataScreen(title: 'Checkout');
+        }
+        return BookingCheckoutScreen(selection: selection);
+      },
+    ),
+    GoRoute(
+      path: '/booking-success',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final confirmation = state.extra;
+        if (confirmation is! BookingConfirmation) {
+          return const MissingRouteDataScreen(
+            title: 'Booking',
+            message: 'Your booking details are available under My Appointments.',
+          );
+        }
+        return BookingSuccessScreen(confirmation: confirmation);
+      },
+    ),
+    GoRoute(
+      path: '/appointment-detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extra = state.extra;
+        final initial = extra is AppointmentModel ? extra : null;
+        final id = initial?.id ??
+            (extra is String ? extra : null) ??
+            state.uri.queryParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const MissingRouteDataScreen(title: 'Appointment Details');
+        }
+        return AppointmentDetailScreen(appointmentId: id, initial: initial);
+      },
+    ),
+    GoRoute(
+      path: '/video-call',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extra = state.extra;
+        final map = extra is Map ? extra : const {};
+        final id = (map['appointmentId'] ?? (extra is String ? extra : null) ?? state.uri.queryParameters['appointmentId'])
+            ?.toString();
+        if (id == null || id.isEmpty) {
+          return const MissingRouteDataScreen(title: 'Video Consultation');
+        }
+        return VideoCallScreen(appointmentId: id, doctorName: map['doctorName']?.toString());
+      },
+    ),
+    GoRoute(
+      path: '/prescriptions',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PrescriptionsScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NotificationsScreen(),
     ),
   ],
 );

@@ -2,277 +2,135 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/fluid_pressable.dart';
 import '../../../core/widgets/frosted_glass.dart';
+import '../../../core/widgets/state_views.dart';
+import '../../appointments/domain/appointment_model.dart';
+import '../../appointments/presentation/widgets/appointment_card.dart';
+import '../../appointments/providers/appointments_provider.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
+import 'notifications_screen.dart';
+import 'prescriptions_screen.dart';
 
+/// Patient dashboard: next appointment, recent activity, prescriptions,
+/// notifications and shortcuts — all from live APIs.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
+  Future<void> _refresh(WidgetRef ref) async {
+    ref.invalidate(appointmentsProvider);
+    ref.invalidate(prescriptionsProvider);
+    await Future.wait<void>([
+      ref.read(notificationsProvider.notifier).load(),
+      ref.read(appointmentsProvider.future).then((_) {}, onError: (_) {}),
+      ref.read(prescriptionsProvider.future).then((_) {}, onError: (_) {}),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
-    final userName = authState.user?.fullName ?? 'Patient';
+    final auth = ref.watch(authStateProvider);
+    final signedIn = ref.read(authRepositoryProvider).isAuthenticated;
+    final topPadding = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    final unread = signedIn ? ref.watch(unreadNotificationsCountProvider) : 0;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: FrostedGlassAppBar(
-        title: const Text(
-          'Health Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.headingText),
-        ),
+        title: const Text('My Health'),
         actions: [
+          if (signedIn)
+            IconButton(
+              tooltip: unread > 0 ? '$unread unread notifications' : 'Notifications',
+              onPressed: () => context.push('/notifications'),
+              icon: Badge(
+                isLabelVisible: unread > 0,
+                label: Text('$unread'),
+                backgroundColor: AppColors.error,
+                child: const Icon(LucideIcons.bell),
+              ),
+            ),
           IconButton(
-            icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.headingText),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications: Reminder for morning spinal exercises at 08:00 AM.')),
-              );
-            },
+            tooltip: 'Profile',
+            onPressed: () => context.push(signedIn ? '/profile' : '/login'),
+            icon: const Icon(LucideIcons.user),
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 12, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // User Greeting & Recovery Status Hero
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppColors.brandGradient,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x260891B2), blurRadius: 18, offset: Offset(0, 6)),
-                ],
+      body: !signedIn
+          ? Padding(
+              padding: EdgeInsets.only(top: topPadding),
+              child: const SignInPromptView(
+                title: 'Your health dashboard',
+                message: 'Sign in to track appointments, prescriptions and updates from your physiotherapist.',
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            )
+          : RefreshIndicator(
+              color: AppColors.primary,
+              edgeOffset: topPadding,
+              onRefresh: () => _refresh(ref),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 120),
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Welcome back, $userName',
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0x33FFFFFF),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text('Active Care Plan', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Rehabilitation Target: Knee Mobility & Posture Realignment',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Progress Bar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text('Care Plan Progress', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text('65% Complete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: const LinearProgressIndicator(
-                      value: 0.65,
-                      backgroundColor: Color(0x4DFFFFFF),
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text('4 of 6 sessions completed with Dr. Tarannum Sayyed', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  _GreetingHeader(name: auth.user?.fullName),
+                  const SizedBox(height: 18),
+                  const _Shortcuts(),
+                  const SizedBox(height: 24),
+                  const _NextAppointmentSection(),
+                  const SizedBox(height: 24),
+                  const _RecentAppointmentsSection(),
+                  const SizedBox(height: 24),
+                  const _PrescriptionsSection(),
+                  const SizedBox(height: 24),
+                  const _NotificationsSection(),
                 ],
               ),
             ),
-            const SizedBox(height: 22),
-
-            // Quick Health Metric Cards
-            Row(
-              children: [
-                Expanded(
-                  child: _DashboardMetricCard(
-                    title: 'Current Pain Score',
-                    value: '1/10',
-                    subtitle: 'Down from 8/10',
-                    trend: '87% Improvement',
-                    trendColor: const Color(0xFF10B981),
-                    icon: LucideIcons.heartPulse,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _DashboardMetricCard(
-                    title: 'Exercise Streak',
-                    value: '14 Days',
-                    subtitle: 'Daily routine kept',
-                    trend: 'Consistency badge',
-                    trendColor: const Color(0xFFF59E0B),
-                    icon: LucideIcons.flame,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 26),
-
-            // Prescribed Daily Home Exercises Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Prescribed Home Exercises', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.headingText)),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('View All (4)', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _ExerciseCard(
-              title: 'Isometric Quadriceps Contractions',
-              reps: '3 sets × 10 reps',
-              duration: '10 mins daily',
-              status: 'Completed Today',
-              isDone: true,
-            ),
-            const SizedBox(height: 10),
-            _ExerciseCard(
-              title: 'Prone Pelvic Tilt & Lumbar Stretch',
-              reps: '2 sets × 15 reps',
-              duration: '8 mins evening',
-              status: 'Pending Evening',
-              isDone: false,
-            ),
-            const SizedBox(height: 26),
-
-            // Digital Prescriptions & Clinical Doctor Notes (EHR)
-            const Text('Digital Prescriptions & Doctor Notes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.headingText)),
-            const SizedBox(height: 12),
-            _PrescriptionCard(
-              date: 'Oct 05, 2026',
-              doctorName: 'Dr. Tarannum Sayyed',
-              specialty: 'Orthopedic & Post-Op Rehab Specialist',
-              diagnosis: 'Left Knee Meniscal Repair & Postural Decompression',
-              notes: 'Patient shows substantial restoration in active knee flexion. Recommended progressive weight bearing and resistance band exercises.',
-              prescriptionId: 'RX-2026-NAG-8821',
-            ),
-            const SizedBox(height: 26),
-
-            // Emergency Care / Dedicated Clinical Hotline
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderSoft),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceSoft,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(LucideIcons.phoneCall, color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('PhysioPrime Care Hotline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.headingText)),
-                        SizedBox(height: 2),
-                        Text('Direct line to support: +91 96232 04165', style: TextStyle(fontSize: 11, color: AppColors.bodyText)),
-                      ],
-                    ),
-                  ),
-                  FluidPressable(
-                    onTap: () => context.push('/caretaker'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text('Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
 
-class _DashboardMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final String trend;
-  final Color trendColor;
-  final IconData icon;
-
-  const _DashboardMetricCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.trend,
-    required this.trendColor,
-    required this.icon,
-  });
+class _GreetingHeader extends ConsumerWidget {
+  final String? name;
+  const _GreetingHeader({required this.name});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appointments = ref.watch(appointmentsProvider).value ?? const <AppointmentModel>[];
+    final upcoming = appointments.where((a) => a.isUpcoming).length;
+    final completed = appointments.where((a) => a.isCompleted).length;
+    final prescriptions = ref.watch(prescriptionsProvider).value?.length;
+    final firstName = (name == null || name!.trim().isEmpty) ? null : name!.trim().split(' ').first;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderSoft),
-        boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 3)),
-        ],
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Color(0x330891B2), blurRadius: 18, offset: Offset(0, 8))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: const TextStyle(fontSize: 11, color: AppColors.bodyText, fontWeight: FontWeight.w600)),
-              Icon(icon, size: 16, color: AppColors.primary),
-            ],
+          Text(
+            firstName == null ? 'Welcome back' : 'Hello, $firstName',
+            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.4),
           ),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.headingText)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: trendColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(trend, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: trendColor)),
+          const SizedBox(height: 4),
+          const Text('Here’s your recovery at a glance.', style: TextStyle(color: Colors.white70, fontSize: 13)),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _Stat(value: '$upcoming', label: 'Upcoming'),
+              _Stat(value: '$completed', label: 'Completed'),
+              _Stat(value: prescriptions == null ? '–' : '$prescriptions', label: 'Prescriptions'),
+            ],
           ),
         ],
       ),
@@ -280,161 +138,249 @@ class _DashboardMetricCard extends StatelessWidget {
   }
 }
 
-class _ExerciseCard extends StatelessWidget {
-  final String title;
-  final String reps;
-  final String duration;
-  final String status;
-  final bool isDone;
-
-  const _ExerciseCard({
-    required this.title,
-    required this.reps,
-    required this.duration,
-    required this.status,
-    required this.isDone,
-  });
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _Stat({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.borderSoft),
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(IconData, String, VoidCallback)>[
+      (LucideIcons.stethoscope, 'Book visit', () => context.go('/doctors')),
+      (LucideIcons.calendar, 'Appointments', () => context.go('/appointments')),
+      (LucideIcons.pill, 'Prescriptions', () => context.push('/prescriptions')),
+      (LucideIcons.bell, 'Updates', () => context.push('/notifications')),
+    ];
+    return Row(
+      children: [
+        for (final item in items)
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: item.$2,
+              child: FluidPressable(
+                onTap: item.$3,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderSoft),
+                      ),
+                      child: Icon(item.$1, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.$2,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.headingText),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  const _SectionHeader({required this.title, this.actionLabel, this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isDone ? const Color(0xFFD1FAE5) : AppColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isDone ? LucideIcons.check : LucideIcons.play,
-              size: 16,
-              color: isDone ? const Color(0xFF059669) : AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.headingText)),
-                const SizedBox(height: 2),
-                Text('$reps • $duration', style: const TextStyle(fontSize: 11, color: AppColors.bodyText)),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.headingText),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: isDone ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: isDone ? const Color(0xFF047857) : const Color(0xFFB45309),
+          if (actionLabel != null && onAction != null)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              child: Text(
+                actionLabel!,
+                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _PrescriptionCard extends StatelessWidget {
-  final String date;
-  final String doctorName;
-  final String specialty;
-  final String diagnosis;
-  final String notes;
-  final String prescriptionId;
-
-  const _PrescriptionCard({
-    required this.date,
-    required this.doctorName,
-    required this.specialty,
-    required this.diagnosis,
-    required this.notes,
-    required this.prescriptionId,
-  });
+class _NextAppointmentSection extends ConsumerWidget {
+  const _NextAppointmentSection();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderSoft),
-        boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(LucideIcons.fileCheck2, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(prescriptionId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary)),
-                ],
-              ),
-              Text(date, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(appointmentsByGroupProvider(AppointmentGroup.upcoming));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          title: 'Upcoming appointments',
+          actionLabel: 'See all',
+          onAction: () => context.go('/appointments'),
+        ),
+        async.when(
+          skipLoadingOnRefresh: true,
+          loading: () => const LoadingView(padding: EdgeInsets.all(16)),
+          error: (e, _) => InfoCard(
+            child: ErrorView(error: e, compact: true, onRetry: () => ref.invalidate(appointmentsProvider)),
           ),
-          const SizedBox(height: 10),
-          Text(doctorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.headingText)),
-          Text(specialty, style: const TextStyle(fontSize: 11, color: AppColors.bodyText)),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Clinical Diagnosis:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(diagnosis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.headingText)),
-                const SizedBox(height: 8),
-                const Text('Therapist Assessment & Instructions:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(notes, style: const TextStyle(fontSize: 11, color: AppColors.bodyText, height: 1.35)),
-              ],
-            ),
-          ),
+          data: (items) => items.isEmpty
+              ? InfoCard(
+                  child: EmptyStateView(
+                    icon: LucideIcons.calendarCheck,
+                    title: 'No upcoming sessions',
+                    message: 'Book your next physiotherapy session.',
+                    actionLabel: 'Book now',
+                    onAction: () => context.go('/doctors'),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (final a in items.take(2)) ...[AppointmentCard(appointment: a), const SizedBox(height: 12)],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentAppointmentsSection extends ConsumerWidget {
+  const _RecentAppointmentsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(appointmentsProvider).value;
+    if (list == null) return const SizedBox.shrink();
+    final recent = list.where((a) => !a.isUpcoming).take(3).toList();
+    if (recent.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          title: 'Recent appointments',
+          actionLabel: 'History',
+          onAction: () => context.go('/appointments'),
+        ),
+        for (final a in recent) ...[
+          AppointmentCard(appointment: a, showActions: a.canReview),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Downloading digital prescription $prescriptionId PDF...')),
-                  );
-                },
-                icon: const Icon(LucideIcons.download, size: 14, color: AppColors.primary),
-                label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
-              ),
-            ],
-          ),
         ],
-      ),
+      ],
+    );
+  }
+}
+
+class _PrescriptionsSection extends ConsumerWidget {
+  const _PrescriptionsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(prescriptionsProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(title: 'Prescriptions', actionLabel: 'View all', onAction: () => context.push('/prescriptions')),
+        async.when(
+          skipLoadingOnRefresh: true,
+          loading: () => const LoadingView(padding: EdgeInsets.all(16)),
+          error: (e, _) => InfoCard(
+            child: ErrorView(error: e, compact: true, onRetry: () => ref.invalidate(prescriptionsProvider)),
+          ),
+          data: (items) => items.isEmpty
+              ? const InfoCard(
+                  child: EmptyStateView(
+                    icon: LucideIcons.clipboardList,
+                    title: 'No prescriptions yet',
+                    message: 'They will appear here after your consultation.',
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (final p in items.take(2)) ...[
+                      PrescriptionCard(prescription: p, onTap: () => showPrescriptionDetail(context, p)),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NotificationsSection extends ConsumerWidget {
+  const _NotificationsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(notificationsProvider);
+    final unread = ref.watch(unreadNotificationsCountProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          title: unread > 0 ? 'Notifications ($unread new)' : 'Notifications',
+          actionLabel: 'View all',
+          onAction: () => context.push('/notifications'),
+        ),
+        async.when(
+          skipLoadingOnRefresh: true,
+          loading: () => const LoadingView(padding: EdgeInsets.all(16)),
+          error: (e, _) => InfoCard(
+            child: ErrorView(error: e, compact: true, onRetry: () => ref.read(notificationsProvider.notifier).load()),
+          ),
+          data: (items) => items.isEmpty
+              ? const InfoCard(
+                  child: EmptyStateView(icon: LucideIcons.bellOff, title: 'No notifications'),
+                )
+              : Column(
+                  children: [
+                    for (final n in items.take(3)) ...[NotificationTile(notification: n), const SizedBox(height: 8)],
+                  ],
+                ),
+        ),
+      ],
     );
   }
 }
