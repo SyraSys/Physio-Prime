@@ -355,8 +355,8 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     required String subtitle,
   }) {
     return Container(
-      width: 140,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      width: 130,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF0891B2), // Solid brand teal from DESIGN.md
         borderRadius: BorderRadius.circular(18),
@@ -484,24 +484,33 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
             // Row 2: Specialty & Distance Indicator
             Row(
               children: [
-                Text(
-                  doc.specialty,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B),
+                Flexible(
+                  child: Text(
+                    doc.specialty,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF64748B),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Icon(LucideIcons.mapPin, size: 14, color: Color(0xFF64748B)),
-                const SizedBox(width: 4),
-                Text(
-                  doc.distance ?? '1.5 km away',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B),
-                  ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.mapPin, size: 13, color: Color(0xFF64748B)),
+                    const SizedBox(width: 3),
+                    Text(
+                      doc.distance ?? '1.5 km away',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
