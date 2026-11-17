@@ -101,6 +101,58 @@ class DoctorsRepository {
   }
 
   static const List<DoctorModel> _mockDoctors = [
+    // Featured Doctor from Mobile Design Specification
+    DoctorModel(
+      id: 'doc-darrell-steward',
+      slug: 'doc-darrell-steward',
+      name: 'Dr. Darrell Steward',
+      title: 'Senior Consultant Neurologist & Physiotherapist',
+      specialty: 'Neurology',
+      photo: 'assets/images/hero_doctor.png',
+      rating: 5.0,
+      reviewCount: 168,
+      experienceYears: 5,
+      patientsTreated: 800,
+      verified: true,
+      featured: true,
+      homeVisitsEnabled: true,
+      gender: 'male',
+      distance: '1.5 km away',
+      location: DoctorLocation(area: 'Nagpur', city: 'Nagpur', address: 'Nagpur, Maharashtra'),
+      fees: DoctorFees(home: 1200, online: 799),
+      minFee: 799,
+      maxFee: 1200,
+      nextAvailable: '2026-10-06',
+      languages: ['English', 'Hindi', 'Marathi'],
+      categories: ['neurological', 'neurology', 'general'],
+      bio: 'Dr. Darrell Steward is a consultant physiotherapist specializing in advanced neurological restoration, post-stroke motor recovery, balance rehabilitation, and neuromuscular facilitation. With 5 years of specialized clinical practice, Dr. Steward has successfully treated over 800 patients, delivering tailored recovery protocols.',
+      expertise: [
+        'Neurological Motor Rehabilitation',
+        'Post-Stroke Movement & Gait Therapy',
+        'Spinal Cord & Cervical Alignment',
+        'Parkinson Mobility Management',
+      ],
+      treatments: [
+        'Proprioceptive Neuromuscular Facilitation (PNF)',
+        'Gait Retraining & Balance Therapy',
+        'Spasticity & Nerve Mobilization',
+        'Therapeutic Core Stabilization',
+      ],
+      education: [
+        'Master of Physiotherapy in Neurology (MPT)',
+        'Bachelor of Physiotherapy (BPT) - Top Honors',
+        'Certified Neuro-Developmental Treatment (NDT) Practitioner',
+      ],
+      experience: [
+        '5+ Years Senior Neuro Physiotherapist - PhysioPrime',
+        'Clinical Fellowship in Adult Neuro-Rehabilitation',
+      ],
+      registration: {
+        'council': 'State OTPT Medical Council',
+        'number': 'OTPT-MH-2021-9874',
+      },
+    ),
+
     // Real Doctor 1: Direct from PhysioPrime Backend API
     DoctorModel(
       id: 'doc-tarannum-sayyed',
