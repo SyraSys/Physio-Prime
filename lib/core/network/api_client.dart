@@ -42,16 +42,18 @@ class ApiClient {
       ),
     );
 
-    // Logging interceptor for debugging (suppress verbose browser CORS stack traces on web)
-    _dio.interceptors.add(
-      PrettyDioLogger(
-        requestHeader: !kIsWeb,
-        requestBody: !kIsWeb,
-        responseBody: !kIsWeb,
-        error: !kIsWeb,
-        compact: true,
-      ),
-    );
+    // Compact error logging to keep UI thread unblocked on mobile
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        PrettyDioLogger(
+          requestHeader: false,
+          requestBody: false,
+          responseBody: false,
+          error: true,
+          compact: true,
+        ),
+      );
+    }
   }
 
   Dio get dio => _dio;
