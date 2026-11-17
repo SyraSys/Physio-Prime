@@ -47,3 +47,4 @@ app.*.map.json
 *.md
 # Local backups
 *.bak
+devtools_options.yaml
