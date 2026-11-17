@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -39,6 +38,18 @@ final appRouter = GoRouter(
           builder: (context, state) => const HomeScreen(),
         ),
         GoRoute(
+          path: '/bookings',
+          builder: (context, state) => const AppointmentsScreen(),
+        ),
+        GoRoute(
+          path: '/history',
+          builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
           path: '/doctors',
           builder: (context, state) => const DoctorsScreen(),
         ),
@@ -68,11 +79,6 @@ final appRouter = GoRouter(
       path: '/forgot-password',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ForgotPasswordScreen(),
-    ),
-    GoRoute(
-      path: '/profile',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/categories/:slug',
@@ -167,9 +173,9 @@ class ScaffoldWithNavBar extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/doctors')) return 1;
-    if (location.startsWith('/appointments')) return 2;
-    if (location.startsWith('/dashboard')) return 3;
+    if (location.startsWith('/bookings') || location.startsWith('/appointments')) return 1;
+    if (location.startsWith('/history') || location.startsWith('/dashboard')) return 2;
+    if (location.startsWith('/profile')) return 3;
     return 0;
   }
 
@@ -179,58 +185,146 @@ class ScaffoldWithNavBar extends StatelessWidget {
         context.go('/');
         break;
       case 1:
-        context.go('/doctors');
+        context.go('/bookings');
         break;
       case 2:
-        context.go('/appointments');
+        context.go('/history');
         break;
       case 3:
-        context.go('/dashboard');
+        context.go('/profile');
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = _calculateSelectedIndex(context);
+
     return Scaffold(
       extendBody: true,
+      backgroundColor: const Color(0xFFF8FAFB),
       body: child,
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xE6FFFFFF), // 90% translucent white
-              border: Border(
-                top: BorderSide(color: Color(0x14000000), width: 0.5),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x140F172A),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    _NavBarItem(
+                      icon: LucideIcons.home,
+                      label: 'Home',
+                      isSelected: selectedIndex == 0,
+                      onTap: () => _onItemTapped(0, context),
+                    ),
+                    _NavBarItem(
+                      icon: LucideIcons.calendar,
+                      label: 'Bookings',
+                      isSelected: selectedIndex == 1,
+                      onTap: () => _onItemTapped(1, context),
+                    ),
+                    _NavBarItem(
+                      icon: LucideIcons.messageSquare,
+                      label: 'History',
+                      isSelected: selectedIndex == 2,
+                      onTap: () => _onItemTapped(2, context),
+                    ),
+                    _NavBarItem(
+                      icon: LucideIcons.user,
+                      label: 'Profile',
+                      isSelected: selectedIndex == 3,
+                      onTap: () => _onItemTapped(3, context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: Container(
+                  width: 134,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavBarItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavBarItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const activeColor = Color(0xFF0891B2);
+    const inactiveColor = Color(0xFF94A3B8);
+    final color = isSelected ? activeColor : inactiveColor;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: color,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: color,
               ),
             ),
-            child: NavigationBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              indicatorColor: const Color(0x1F0891B2),
-              selectedIndex: _calculateSelectedIndex(context),
-              onDestinationSelected: (idx) => _onItemTapped(idx, context),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(LucideIcons.home),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: Icon(LucideIcons.stethoscope),
-                  label: 'Doctors',
-                ),
-                NavigationDestination(
-                  icon: Icon(LucideIcons.calendar),
-                  label: 'Appointments',
-                ),
-                NavigationDestination(
-                  icon: Icon(LucideIcons.user),
-                  label: 'Dashboard',
-                ),
-              ],
+            const SizedBox(height: 3),
+            Container(
+              width: 22,
+              height: 2.5,
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
