@@ -112,6 +112,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authStateProvider, (prev, next) {
+      if (next.status == AuthStatus.authenticated && mounted) {
+        _handleBack();
+      }
+    });
+
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.status == AuthStatus.loading;
 

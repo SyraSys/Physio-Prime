@@ -38,6 +38,34 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Deep Linking / Supabase Auth Callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="physioprime"
+                    android:host="auth-callback" />
+                <data
+                    android:scheme="physioprime"
+                    android:host="reset-password" />
+                <data
+                    android:scheme="in.physioprime.app" />
+            </intent-filter>
+
+            <!-- Web Domain Deep Linking (Fallback when redirecting to website domain) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.physio-prime.in" />
+                <data
+                    android:scheme="https"
+                    android:host="physio-prime.in" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

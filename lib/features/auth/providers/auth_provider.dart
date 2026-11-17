@@ -32,6 +32,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier(this._repository) : super(AuthState.initial()) {
     checkCurrentSession();
+    _repository.listenAuthStateChanges((session) async {
+      if (session != null) {
+        try {
+          final user = await _repository.syncUserProfile();
+          state = AuthState.authenticated(user);
+        } catch (_) {
+          final supaUser = _repository.currentSupabaseUser;
+          if (supaUser != null) {
+            state = AuthState.authenticated(
+              UserModel(
+                id: supaUser.id,
+                email: supaUser.email ?? '',
+                fullName: supaUser.userMetadata?['fullName'] ??
+                    supaUser.userMetadata?['name'] ??
+                    supaUser.userMetadata?['full_name'],
+                phone: supaUser.phone,
+              ),
+            );
+          } else {
+            state = AuthState.unauthenticated();
+          }
+        }
+      } else {
+        state = AuthState.unauthenticated();
+      }
+    });
   }
 
   Future<void> checkCurrentSession() async {

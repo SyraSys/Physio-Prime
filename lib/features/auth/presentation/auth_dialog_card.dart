@@ -111,6 +111,12 @@ class _AuthDialogCardState extends ConsumerState<AuthDialogCard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authStateProvider, (prev, next) {
+      if (next.status == AuthStatus.authenticated && mounted) {
+        _handleClose();
+      }
+    });
+
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.status == AuthStatus.loading;
     final isLogin = _activeTab == AuthTab.login;

@@ -21,6 +21,19 @@ class AuthRepository {
   Session? get currentSession => _supabase.auth.currentSession;
   bool get isAuthenticated => currentSession != null;
 
+  /// Listen to Supabase Auth state changes (OAuth redirects, token refresh, sign-in/out)
+  void listenAuthStateChanges(void Function(Session? session) onSessionChange) {
+    _supabase.auth.onAuthStateChange.listen((data) async {
+      if (data.session?.accessToken != null) {
+        await _storage.write(key: ApiConstants.tokenKey, value: data.session!.accessToken);
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        await _storage.delete(key: ApiConstants.tokenKey);
+        await _storage.delete(key: ApiConstants.userKey);
+      }
+      onSessionChange(data.session);
+    });
+  }
+
   /// Sign In with Email & Password
   Future<UserModel> signInWithPassword({
     required String email,
