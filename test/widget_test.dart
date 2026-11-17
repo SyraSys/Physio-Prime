@@ -1,10 +1,45 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physio_prime_app/features/auth/domain/user_model.dart';
 import 'package:physio_prime_app/features/home/domain/category_model.dart';
 import 'package:physio_prime_app/features/home/domain/symptom_model.dart';
 import 'package:physio_prime_app/features/doctors/domain/doctor_model.dart';
 
 void main() {
   group('Developer 1 Domain Models Tests', () {
+    test('UserModel deserialization with web profile attributes', () {
+      final json = {
+        'id': 'usr-12345',
+        'email': 'hey.zenith5@gmail.com',
+        'fullName': 'Zenith',
+        'phone': '+91 9876543210',
+        'role': 'patient',
+        'gender': 'Male',
+        'dateOfBirth': '15/08/1995',
+        'weight': '68 kg',
+        'height': '175 cm',
+        'address': 'Nagpur, Maharashtra, India',
+      };
+
+      final user = UserModel.fromJson(json);
+      expect(user.id, 'usr-12345');
+      expect(user.email, 'hey.zenith5@gmail.com');
+      expect(user.fullName, 'Zenith');
+      expect(user.phone, '+91 9876543210');
+      expect(user.gender, 'Male');
+      expect(user.dateOfBirth, '15/08/1995');
+      expect(user.weight, '68 kg');
+      expect(user.height, '175 cm');
+      expect(user.address, 'Nagpur, Maharashtra, India');
+
+      final serialized = user.toJson();
+      expect(serialized['weight'], '68 kg');
+      expect(serialized['height'], '175 cm');
+      expect(serialized['address'], 'Nagpur, Maharashtra, India');
+
+      final copied = user.copyWith(weight: '70 kg');
+      expect(copied.weight, '70 kg');
+      expect(copied.fullName, 'Zenith');
+    });
     test('CategoryModel deserialization', () {
       final json = {
         'id': 'orthopedic',

@@ -3,22 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/fluid_pressable.dart';
 import '../../../core/widgets/frosted_glass.dart';
 import '../../appointments/domain/appointment_model.dart';
 import '../../appointments/providers/appointments_provider.dart';
+import '../../dashboard/domain/prescription_model.dart';
+import '../../dashboard/presentation/notifications_screen.dart';
+import '../../dashboard/presentation/prescriptions_screen.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
-import '../../home/providers/home_provider.dart';
 import '../domain/user_model.dart';
 import '../providers/auth_provider.dart';
 
-/// Redesigned Patient Profile Screen matching DESIGN.md specification
-/// Features high-clarity typography (Plus Jakarta Sans & Inter), soft organic elevation,
-/// clinical health stats, grouped Apple-style settings cards, and direct care concierge.
+/// Redesigned Profile Screen conforming strictly to DESIGN.md and the web reference layout.
+/// Features:
+/// 1. Shared Patient Header Card (Avatar, Name, Patient Badge, Email, Completed & Upcoming Session counts).
+/// 2. 4 Horizontal Segmented Tabs:
+///    - Personal Profile (Account Details grid, Edit Profile, Sign Out)
+///    - Digital Prescriptions (Digital EHR & Session Summaries)
+///    - Notifications (Notifications & Activity)
+///    - Privacy & Security (Change Account Password)
+/// 3. 120px bottom padding to prevent overlap with the floating navigation bar.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -27,30 +33,33 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  Future<void> _launchExternalUrl(String urlString) async {
-    final uri = Uri.parse(urlString);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open $urlString')),
-          );
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to open link on this device')),
-        );
-      }
-    }
+  int _selectedTabIndex = 0;
+
+  // Password controllers for Tab 3 (Privacy & Security)
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+  bool _isUpdatingPassword = false;
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   void _showEditProfileSheet(BuildContext context, UserModel user) {
     final nameController = TextEditingController(text: user.fullName ?? '');
     final phoneController = TextEditingController(text: user.phone ?? '');
+    final genderController = TextEditingController(text: user.gender ?? '');
+    final dobController = TextEditingController(text: user.dateOfBirth ?? '');
+    final weightController = TextEditingController(text: user.weight ?? '');
+    final heightController = TextEditingController(text: user.height ?? '');
+    final addressController = TextEditingController(text: user.address ?? '');
     bool isSaving = false;
 
     showModalBottomSheet<void>(
@@ -74,6 +83,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
               padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -105,7 +117,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          'Edit Patient Profile',
+                          'Edit Profile Details',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -116,80 +128,111 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Full Name Input
-                    Text(
-                      'Full Name',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
+                    // Full Name
+                    _buildInputLabel('Full Name'),
                     const SizedBox(height: 6),
-                    TextField(
+                    _buildTextField(
                       controller: nameController,
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
-                      decoration: InputDecoration(
-                        hintText: 'Enter your full name',
-                        hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
-                        prefixIcon: const Icon(LucideIcons.user, size: 18, color: Color(0xFF94A3B8)),
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                      ),
+                      hint: 'Enter your full name',
+                      icon: LucideIcons.user,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Phone Number Input
-                    Text(
-                      'Phone Number',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
+                    // Phone Number
+                    _buildInputLabel('Phone Number'),
                     const SizedBox(height: 6),
-                    TextField(
+                    _buildTextField(
                       controller: phoneController,
+                      hint: '+91 98765 43210',
+                      icon: LucideIcons.phone,
                       keyboardType: TextInputType.phone,
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
-                      decoration: InputDecoration(
-                        hintText: 'e.g. +91 98765 43210',
-                        hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
-                        prefixIcon: const Icon(LucideIcons.phone, size: 18, color: Color(0xFF94A3B8)),
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Gender & Date of Birth
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Gender'),
+                              const SizedBox(height: 6),
+                              _buildTextField(
+                                controller: genderController,
+                                hint: 'Male / Female',
+                                icon: LucideIcons.user,
+                              ),
+                            ],
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Date of Birth'),
+                              const SizedBox(height: 6),
+                              _buildTextField(
+                                controller: dobController,
+                                hint: 'DD/MM/YYYY',
+                                icon: LucideIcons.calendar,
+                              ),
+                            ],
+                          ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Weight & Height
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Weight'),
+                              const SizedBox(height: 6),
+                              _buildTextField(
+                                controller: weightController,
+                                hint: 'e.g. 68 kg',
+                                icon: LucideIcons.activity,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Height'),
+                              const SizedBox(height: 6),
+                              _buildTextField(
+                                controller: heightController,
+                                hint: 'e.g. 175 cm',
+                                icon: LucideIcons.maximize2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Address
+                    _buildInputLabel('Address'),
+                    const SizedBox(height: 6),
+                    _buildTextField(
+                      controller: addressController,
+                      hint: 'Residential address',
+                      icon: LucideIcons.mapPin,
+                      maxLines: 2,
                     ),
                     const SizedBox(height: 24),
 
-                    // Save Action Button
+                    // Save Button
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
@@ -204,12 +247,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 setSheetState(() => isSaving = true);
                                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                                 final navigator = Navigator.of(sheetContext);
-                                final newName = nameController.text.trim();
-                                final newPhone = phoneController.text.trim();
+
                                 await ref.read(authStateProvider.notifier).updateProfile(
-                                      fullName: newName.isNotEmpty ? newName : null,
-                                      phone: newPhone.isNotEmpty ? newPhone : null,
+                                      fullName: nameController.text.trim().isNotEmpty
+                                          ? nameController.text.trim()
+                                          : null,
+                                      phone: phoneController.text.trim().isNotEmpty
+                                          ? phoneController.text.trim()
+                                          : null,
+                                      gender: genderController.text.trim().isNotEmpty
+                                          ? genderController.text.trim()
+                                          : null,
+                                      dateOfBirth: dobController.text.trim().isNotEmpty
+                                          ? dobController.text.trim()
+                                          : null,
+                                      weight: weightController.text.trim().isNotEmpty
+                                          ? weightController.text.trim()
+                                          : null,
+                                      height: heightController.text.trim().isNotEmpty
+                                          ? heightController.text.trim()
+                                          : null,
+                                      address: addressController.text.trim().isNotEmpty
+                                          ? addressController.text.trim()
+                                          : null,
                                     );
+
                                 if (sheetContext.mounted) {
                                   navigator.pop();
                                 }
@@ -245,6 +307,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildInputLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF475569),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF94A3B8)),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFB),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+      ),
     );
   }
 
@@ -295,6 +403,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<void> _handlePasswordUpdate() async {
+    final currentPw = _currentPasswordController.text.trim();
+    final newPw = _newPasswordController.text.trim();
+    final confirmPw = _confirmPasswordController.text.trim();
+
+    if (newPw.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New password must be at least 8 characters long.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    if (newPw != confirmPw) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New passwords do not match.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isUpdatingPassword = true);
+    final success = await ref.read(authStateProvider.notifier).changePassword(
+          currentPassword: currentPw,
+          newPassword: newPw,
+        );
+    if (!mounted) return;
+    setState(() => _isUpdatingPassword = false);
+
+    if (success) {
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password updated successfully!'),
+          backgroundColor: Color(0xFF0D9488),
+        ),
+      );
+    } else {
+      final err = ref.read(authStateProvider).errorMessage ?? 'Failed to update password.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -314,17 +476,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             color: const Color(0xFF0F172A),
           ),
         ),
-        actions: [
-          if (isAuthenticated)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                tooltip: 'Edit Profile',
-                icon: const Icon(LucideIcons.edit3, size: 20, color: AppColors.primary),
-                onPressed: () => _showEditProfileSheet(context, user),
-              ),
-            ),
-        ],
       ),
       body: isAuthenticated
           ? _buildAuthenticatedContent(context, user, topPadding)
@@ -332,302 +483,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildAuthenticatedContent(BuildContext context, UserModel user, double topPadding) {
-    final appointments = ref.watch(appointmentsProvider).value ?? const <AppointmentModel>[];
-    final completedCount = appointments.where((a) => a.isCompleted).length;
-    final prescriptions = ref.watch(prescriptionsProvider).value ?? const [];
-    final unreadCount = ref.watch(unreadNotificationsCountProvider);
-    final selectedCity = ref.watch(selectedCityProvider);
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 120),
-      children: [
-        // 1. Patient Hero Card
-        _PatientHeroCard(
-          user: user,
-          onEdit: () => _showEditProfileSheet(context, user),
-        ),
-        const SizedBox(height: 16),
-
-        // 2. Health & Recovery Overview Strip
-        _RecoveryStatsStrip(
-          consultationsCount: completedCount,
-          prescriptionsCount: prescriptions.length,
-        ),
-        const SizedBox(height: 24),
-
-        // 3. Medical & Records Section
-        _SectionLabel(title: 'Medical & Consultations'),
-        const SizedBox(height: 8),
-        _GroupedCard(
-          children: [
-            _ProfileNavTile(
-              icon: LucideIcons.fileText,
-              iconColor: const Color(0xFF0891B2),
-              iconBgColor: const Color(0xFFEBF8FA),
-              title: 'Prescriptions & Exercises',
-              subtitle: 'Doctor rehabilitation notes and PDFs',
-              badgeText: prescriptions.isNotEmpty ? '${prescriptions.length}' : null,
-              onTap: () => context.push('/prescriptions'),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.calendar,
-              iconColor: const Color(0xFF0D9488),
-              iconBgColor: const Color(0xFFE6FFFA),
-              title: 'My Consultations',
-              subtitle: 'Upcoming sessions and history',
-              onTap: () => context.go('/appointments'),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.stethoscope,
-              iconColor: const Color(0xFF6366F1),
-              iconBgColor: const Color(0xFFEEF2FF),
-              title: 'Find & Book Physiotherapists',
-              subtitle: 'Home visits & video teleconsultations',
-              onTap: () => context.go('/doctors'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 4. Preferences & Location Section
-        _SectionLabel(title: 'Preferences & City'),
-        const SizedBox(height: 8),
-        _GroupedCard(
-          children: [
-            _ProfileNavTile(
-              icon: LucideIcons.bell,
-              iconColor: const Color(0xFFF59E0B),
-              iconBgColor: const Color(0xFFFEF3C7),
-              title: 'Notifications & Alerts',
-              subtitle: 'Appointment reminders & status updates',
-              badgeText: unreadCount > 0 ? '$unreadCount new' : null,
-              badgeColor: const Color(0xFFEF4444),
-              onTap: () => context.push('/notifications'),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.mapPin,
-              iconColor: const Color(0xFF06B6D4),
-              iconBgColor: const Color(0xFFCFFAFE),
-              title: 'Service City',
-              subtitle: 'Serving $selectedCity and surrounding areas',
-              trailingWidget: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  selectedCity,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              onTap: () => context.go('/'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 5. Direct Care Concierge & Support Section
-        _SectionLabel(title: 'PhysioPrime Care Concierge'),
-        const SizedBox(height: 8),
-        _GroupedCard(
-          children: [
-            _ProfileNavTile(
-              icon: LucideIcons.messageCircle,
-              iconColor: const Color(0xFF10B981),
-              iconBgColor: const Color(0xFFECFDF5),
-              title: 'Chat with Care Team',
-              subtitle: 'Instant WhatsApp booking assistance',
-              trailingIcon: LucideIcons.externalLink,
-              onTap: () => _launchExternalUrl(ApiConstants.supportWhatsApp),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.phoneCall,
-              iconColor: const Color(0xFF0D9488),
-              iconBgColor: const Color(0xFFE6FFFA),
-              title: 'Call Patient Helpline',
-              subtitle: ApiConstants.supportPhone,
-              trailingIcon: LucideIcons.externalLink,
-              onTap: () => _launchExternalUrl('tel:${ApiConstants.supportPhone}'),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.mail,
-              iconColor: const Color(0xFF64748B),
-              iconBgColor: const Color(0xFFF1F5F9),
-              title: 'Email Medical Support',
-              subtitle: ApiConstants.supportEmail,
-              trailingIcon: LucideIcons.externalLink,
-              onTap: () => _launchExternalUrl('mailto:${ApiConstants.supportEmail}'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 6. About & Information
-        _SectionLabel(title: 'About PhysioPrime'),
-        const SizedBox(height: 8),
-        _GroupedCard(
-          children: [
-            _ProfileNavTile(
-              icon: LucideIcons.helpCircle,
-              iconColor: const Color(0xFF0891B2),
-              iconBgColor: const Color(0xFFEBF8FA),
-              title: 'How It Works',
-              subtitle: 'Our home visit & telehealth clinical protocols',
-              onTap: () => context.push('/how-it-works'),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.shieldCheck,
-              iconColor: const Color(0xFF0D9488),
-              iconBgColor: const Color(0xFFE6FFFA),
-              title: 'Clinical Accreditation & Privacy',
-              subtitle: 'Council-verified physiotherapists & data safety',
-              onTap: () => context.push('/about'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
-
-        // 7. Sign Out Button
-        FluidPressable(
-          onTap: () => _showSignOutDialog(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFEE2E2), width: 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(LucideIcons.logOut, size: 18, color: Color(0xFFDC2626)),
-                const SizedBox(width: 8),
-                Text(
-                  'Sign Out of PhysioPrime',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFDC2626),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // App Version Footer
-        Center(
-          child: Text(
-            'PhysioPrime Mobile v1.0.0 (Build 2026.11)',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: const Color(0xFF94A3B8),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildGuestContent(BuildContext context, double topPadding) {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 120),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 120),
       children: [
-        // Premium Guest Card
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0A0F172A),
-                blurRadius: 18,
-                offset: Offset(0, 6),
+                blurRadius: 16,
+                offset: Offset(0, 4),
               ),
             ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo Monogram
               Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEBF8FA), Color(0xFFE0F7FA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFB2EBF2), width: 1.5),
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEBF8FA),
+                  shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/pp_monogram.png',
-                    width: 36,
-                    height: 36,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+                child: const Icon(LucideIcons.user, size: 30, color: AppColors.primary),
               ),
               const SizedBox(height: 18),
-
-              // Title
               Text(
-                'Your Health Portal',
+                'Welcome to PhysioPrime',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F172A),
-                  letterSpacing: -0.4,
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Description
               Text(
-                'Sign in to manage your appointments, view digital prescriptions, follow exercise routines, and message your therapists.',
+                'Sign in to manage your appointments, view clinical prescriptions, and access your profile.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF64748B),
-                  height: 1.45,
-                ),
+                style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF64748B), height: 1.4),
               ),
               const SizedBox(height: 24),
-
-              // Sign In CTA
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   onPressed: () => context.push('/login'),
                   child: Text(
-                    'Sign In / Create Account',
+                    'Sign In / Register',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -636,112 +548,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // Explore Doctors Button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () => context.go('/doctors'),
-                  child: Text(
-                    'Browse Physiotherapists',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
 
-        // Why Register With PhysioPrime
-        _SectionLabel(title: 'Patient Benefits'),
-        const SizedBox(height: 10),
-        _GroupedCard(
-          children: const [
-            _FeatureBenefitTile(
-              icon: LucideIcons.home,
-              title: 'Doorstep Physiotherapy',
-              subtitle: 'Qualified physiotherapists visit your residence with electrotherapy modalities',
-            ),
-            _TileDivider(),
-            _FeatureBenefitTile(
-              icon: LucideIcons.fileCheck,
-              title: 'Digital Prescriptions',
-              subtitle: 'Review clinical exercise plans, posture guides, and progress notes anytime',
-            ),
-            _TileDivider(),
-            _FeatureBenefitTile(
-              icon: LucideIcons.video,
-              title: 'HD Teleconsultation',
-              subtitle: '1-on-1 secure virtual sessions with specialist orthopedic & neuro rehab physiotherapists',
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
+  Widget _buildAuthenticatedContent(BuildContext context, UserModel user, double topPadding) {
+    final appointments = ref.watch(appointmentsProvider).value ?? const <AppointmentModel>[];
+    final completedCount = appointments.where((a) => a.isCompleted).length;
+    final upcomingCount = appointments.where((a) => a.isUpcoming).length;
 
-        // Patient Care Support
-        _SectionLabel(title: 'Need Immediate Help?'),
-        const SizedBox(height: 10),
-        _GroupedCard(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 120),
+      children: [
+        // 1. Shared Profile Header Card (Website Style)
+        _buildProfileHeaderCard(user, completedCount, upcomingCount),
+        const SizedBox(height: 16),
+
+        // 2. Segmented Horizontal Tab Bar (4 Tabs)
+        _buildSegmentedTabBar(),
+        const SizedBox(height: 16),
+
+        // 3. Tab Content Card
+        IndexedStack(
+          index: _selectedTabIndex,
           children: [
-            _ProfileNavTile(
-              icon: LucideIcons.messageCircle,
-              iconColor: const Color(0xFF10B981),
-              iconBgColor: const Color(0xFFECFDF5),
-              title: 'Chat on WhatsApp',
-              subtitle: 'Speak with our patient care coordinator',
-              trailingIcon: LucideIcons.externalLink,
-              onTap: () => _launchExternalUrl(ApiConstants.supportWhatsApp),
-            ),
-            const _TileDivider(),
-            _ProfileNavTile(
-              icon: LucideIcons.phoneCall,
-              iconColor: const Color(0xFF0D9488),
-              iconBgColor: const Color(0xFFE6FFFA),
-              title: 'Direct Call Assistance',
-              subtitle: ApiConstants.supportPhone,
-              trailingIcon: LucideIcons.externalLink,
-              onTap: () => _launchExternalUrl('tel:${ApiConstants.supportPhone}'),
-            ),
+            _buildTabPersonalProfile(user),
+            _buildTabDigitalPrescriptions(),
+            _buildTabNotifications(),
+            _buildTabPrivacySecurity(),
           ],
         ),
       ],
     );
   }
-}
 
-// -------------------------------------------------------------
-// Component Subwidgets
-// -------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 1. PROFILE HEADER CARD (Matches website top profile card)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildProfileHeaderCard(UserModel user, int completedCount, int upcomingCount) {
+    final initialLetter = (user.fullName?.isNotEmpty == true
+            ? user.fullName![0]
+            : (user.email.isNotEmpty ? user.email[0] : 'U'))
+        .toUpperCase();
 
-class _PatientHeroCard extends StatelessWidget {
-  final UserModel user;
-  final VoidCallback onEdit;
-
-  const _PatientHeroCard({required this.user, required this.onEdit});
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = (user.fullName != null && user.fullName!.trim().isNotEmpty)
-        ? user.fullName!.trim()[0].toUpperCase()
-        : (user.email.isNotEmpty ? user.email[0].toUpperCase() : 'P');
+    final displayName = user.fullName?.isNotEmpty == true
+        ? user.fullName!
+        : (user.email.split('@').first.isNotEmpty ? user.email.split('@').first : 'User');
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A0F172A),
@@ -751,478 +614,839 @@ class _PatientHeroCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Top Row: Avatar + Name + Patient Pill + Email
           Row(
             children: [
-              // Avatar with subtle status ring
-              Stack(
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0891B2), Color(0xFF14B8A6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x260891B2),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        initials,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+              // Avatar
+              Container(
+                width: 54,
+                height: 54,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initialLetter,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0D9488),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(LucideIcons.check, size: 10, color: Colors.white),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(width: 16),
-
-              // Name & Contact Info
+              const SizedBox(width: 14),
+              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.fullName ?? 'PhysioPrime Patient',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -0.3,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            displayName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0F7FA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFB2EBF2)),
+                          ),
+                          child: Text(
+                            user.role?.isNotEmpty == true ? user.role! : 'Patient',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 3),
                     Text(
                       user.email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
-                        fontSize: 12.5,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                         color: const Color(0xFF64748B),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-
-                    // Phone or Add Phone Pill
-                    if (user.phone != null && user.phone!.isNotEmpty)
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.phone, size: 12, color: Color(0xFF0891B2)),
-                          const SizedBox(width: 4),
-                          Text(
-                            user.phone!,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF0891B2),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      GestureDetector(
-                        onTap: onEdit,
-                        child: Text(
-                          '+ Add Phone Number',
-                          style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF0891B2),
-                          ),
-                        ),
-                      ),
                   ],
-                ),
-              ),
-
-              // Edit Button
-              FluidPressable(
-                onTap: onEdit,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Icon(LucideIcons.pencil, size: 16, color: Color(0xFF475569)),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Verified Patient Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0FDFA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFCCFBF1)),
-            ),
-            child: Row(
-              children: [
-                const Icon(LucideIcons.shieldCheck, size: 15, color: Color(0xFF0D9488)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Registered & Verified PhysioPrime Patient',
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0F766E),
-                    ),
-                  ),
+          // Two Stat Boxes in a row (Completed Sessions & Upcoming Sessions)
+          Row(
+            children: [
+              Expanded(
+                child: _buildHeaderStatBox(
+                  title: 'Completed Sessions',
+                  count: completedCount,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHeaderStatBox(
+                  title: 'Upcoming Sessions',
+                  count: upcomingCount,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderStatBox({required String title, required int count}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDFA), // Very soft teal/mint
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFCCFBF1)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$count',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _RecoveryStatsStrip extends StatelessWidget {
-  final int consultationsCount;
-  final int prescriptionsCount;
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 2. SEGMENTED TAB BAR (Matches website 4-pill segmented buttons)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildSegmentedTabBar() {
+    final tabs = [
+      {'title': 'Personal Profile', 'icon': LucideIcons.user},
+      {'title': 'Digital Prescriptions', 'icon': LucideIcons.fileText},
+      {'title': 'Notifications', 'icon': LucideIcons.bell},
+      {'title': 'Privacy & Security', 'icon': LucideIcons.shield},
+    ];
 
-  const _RecoveryStatsStrip({
-    required this.consultationsCount,
-    required this.prescriptionsCount,
-  });
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final isSelected = _selectedTabIndex == index;
+          final tab = tabs[index];
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _StatCard(
-          title: 'Consultations',
-          value: '$consultationsCount',
-          icon: LucideIcons.calendarCheck,
-          accentColor: const Color(0xFF0891B2),
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          title: 'Prescriptions',
-          value: '$prescriptionsCount',
-          icon: LucideIcons.fileText,
-          accentColor: const Color(0xFF0D9488),
-        ),
-        const SizedBox(width: 12),
-        const _StatCard(
-          title: 'Care Status',
-          value: 'Active',
-          icon: LucideIcons.heartHandshake,
-          accentColor: Color(0xFF10B981),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color accentColor;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x080F172A),
-              blurRadius: 10,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 20, color: accentColor),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF0F172A),
+          return Padding(
+            padding: EdgeInsets.only(right: index == tabs.length - 1 ? 0 : 8),
+            child: FluidPressable(
+              onTap: () {
+                setState(() => _selectedTabIndex = index);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                  boxShadow: isSelected
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x330891B2),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      tab['icon'] as IconData,
+                      size: 15,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      tab['title'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
-}
 
-class _SectionLabel extends StatelessWidget {
-  final String title;
-  const _SectionLabel({required this.title});
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 3. TAB 1: PERSONAL PROFILE ("Account Details")
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildTabPersonalProfile(UserModel user) {
+    final weightStr = user.weight?.isNotEmpty == true ? user.weight! : '—';
+    final heightStr = user.height?.isNotEmpty == true ? user.height! : '—';
+    final weightHeight = '$weightStr • $heightStr';
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: const Color(0xFF0F172A),
-          letterSpacing: -0.2,
-        ),
-      ),
-    );
-  }
-}
-
-class _GroupedCard extends StatelessWidget {
-  final List<Widget> children;
-  const _GroupedCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 12,
-            offset: Offset(0, 3),
+            color: Color(0x0A0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        children: children,
-      ),
-    );
-  }
-}
-
-class _TileDivider extends StatelessWidget {
-  const _TileDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(left: 56, right: 16),
-      child: Divider(height: 1, thickness: 0.8, color: Color(0xFFF1F5F9)),
-    );
-  }
-}
-
-class _ProfileNavTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final String? badgeText;
-  final Color? badgeColor;
-  final IconData trailingIcon;
-  final Widget? trailingWidget;
-  final VoidCallback onTap;
-
-  const _ProfileNavTile({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    this.badgeText,
-    this.badgeColor,
-    this.trailingIcon = LucideIcons.chevronRight,
-    this.trailingWidget,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FluidPressable(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(
-          children: [
-            // Leading Icon with soft pastel background
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 19, color: iconColor),
-            ),
-            const SizedBox(width: 14),
-
-            // Title & Subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Optional Badge
-            if (badgeText != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: badgeColor ?? const Color(0xFF0891B2),
-                  borderRadius: BorderRadius.circular(10),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Section Title + Edit Profile Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Account Details',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
                 ),
-                child: Text(
-                  badgeText!,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+              ),
+              FluidPressable(
+                onTap: () => _showEditProfileSheet(context, user),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.edit3, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Edit Profile',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
             ],
+          ),
+          const SizedBox(height: 18),
 
-            // Trailing widget or Chevron
-            trailingWidget ??
-                Icon(
-                  trailingIcon,
-                  size: 16,
-                  color: const Color(0xFF94A3B8),
+          // 7 Account Details fields matching the website layout:
+          // 1. Full Name
+          _buildDetailCard(label: 'Full Name', value: user.fullName?.isNotEmpty == true ? user.fullName! : '—'),
+          const SizedBox(height: 10),
+
+          // 2. Email Address
+          _buildDetailCard(label: 'Email Address', value: user.email.isNotEmpty ? user.email : '—'),
+          const SizedBox(height: 10),
+
+          // 3 & 4. Phone Number & Gender (Side by side on mobile)
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailCard(
+                  label: 'Phone Number',
+                  value: user.phone?.isNotEmpty == true ? user.phone! : '—',
                 ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildDetailCard(
+                  label: 'Gender',
+                  value: user.gender?.isNotEmpty == true ? user.gender! : '—',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 5 & 6. Date of Birth & Weight / Height (Side by side on mobile)
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailCard(
+                  label: 'Date of Birth',
+                  value: user.dateOfBirth?.isNotEmpty == true ? user.dateOfBirth! : '—',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildDetailCard(
+                  label: 'Weight / Height',
+                  value: weightHeight,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 7. Address
+          _buildDetailCard(
+            label: 'Address',
+            value: user.address?.isNotEmpty == true ? user.address! : '—',
+          ),
+          const SizedBox(height: 24),
+
+          // Sign Out Button
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFFECACA)),
+                backgroundColor: const Color(0xFFFEF2F2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: () => _showSignOutDialog(context),
+              icon: const Icon(LucideIcons.logOut, size: 16, color: Color(0xFFEF4444)),
+              label: Text(
+                'Sign Out',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _FeatureBenefitTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _FeatureBenefitTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
+  Widget _buildDetailCard({required String label, required String value}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF0F172A),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 4. TAB 2: DIGITAL PRESCRIPTIONS ("Digital EHR & Session Summaries")
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildTabDigitalPrescriptions() {
+    final async = ref.watch(prescriptionsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Digital EHR & Session Summaries',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Official clinical notes, rehabilitation exercises, and prescriptions issued by your physiotherapists.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          async.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+              ),
+            ),
+            error: (_, _) => _buildEmptyPrescriptionsBox(),
+            data: (prescriptions) {
+              if (prescriptions.isEmpty) {
+                return _buildEmptyPrescriptionsBox();
+              }
+              return Column(
+                children: prescriptions.map((p) => _buildPrescriptionItem(p)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyPrescriptionsBox() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(LucideIcons.fileText, size: 36, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No prescriptions issued yet',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Your session notes, prescribed exercises, and clinical summaries will appear here once your physiotherapist completes your consultation.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrescriptionItem(PrescriptionModel p) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFFEBF8FA),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: AppColors.primary),
+            child: const Icon(LucideIcons.fileText, size: 20, color: AppColors.primary),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  p.diagnosis ?? 'Prescription Record',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F172A),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    color: const Color(0xFF64748B),
-                    height: 1.35,
+                if (p.doctorName != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Dr. ${p.doctorName}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF64748B),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
+          TextButton(
+            onPressed: () => showPrescriptionDetail(context, p),
+            child: Text(
+              'View Details',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 5. TAB 3: NOTIFICATIONS ("Notifications & Activity")
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildTabNotifications() {
+    final async = ref.watch(notificationsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Notifications & Activity',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Real-time updates for your bookings, sessions, and prescriptions.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          async.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+              ),
+            ),
+            error: (_, _) => _buildEmptyNotificationsBox(),
+            data: (items) {
+              if (items.isEmpty) {
+                return _buildEmptyNotificationsBox();
+              }
+              return Column(
+                children: items.map((item) => NotificationTile(notification: item)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyNotificationsBox() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(LucideIcons.bell, size: 36, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            "You're all caught up",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Booking confirmations and clinical updates will appear here.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 6. TAB 4: PRIVACY & SECURITY ("Privacy & Security Controls")
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildTabPrivacySecurity() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Privacy & Security Controls',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your health data is encrypted according to HIPAA and ISO-27001 medical standards.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Change Account Password Subheader
+          Row(
+            children: [
+              const Icon(LucideIcons.key, size: 16, color: Color(0xFF0F172A)),
+              const SizedBox(width: 8),
+              Text(
+                'Change Account Password',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Field 1: Current Password
+          _buildPasswordLabel('Current Password *'),
+          const SizedBox(height: 6),
+          _buildPasswordField(
+            controller: _currentPasswordController,
+            hint: '••••••••',
+            obscureText: _obscureCurrent,
+            onToggleObscure: () => setState(() => _obscureCurrent = !_obscureCurrent),
+          ),
+          const SizedBox(height: 14),
+
+          // Field 2: New Password
+          _buildPasswordLabel('New Password *'),
+          const SizedBox(height: 6),
+          _buildPasswordField(
+            controller: _newPasswordController,
+            hint: 'At least 8 characters',
+            obscureText: _obscureNew,
+            onToggleObscure: () => setState(() => _obscureNew = !_obscureNew),
+          ),
+          const SizedBox(height: 14),
+
+          // Field 3: Confirm New Password
+          _buildPasswordLabel('Confirm New Password *'),
+          const SizedBox(height: 6),
+          _buildPasswordField(
+            controller: _confirmPasswordController,
+            hint: '••••••••',
+            obscureText: _obscureConfirm,
+            onToggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          ),
+          const SizedBox(height: 20),
+
+          // Update Password Button
+          SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _isUpdatingPassword ? null : _handlePasswordUpdate,
+              icon: _isUpdatingPassword
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(LucideIcons.key, size: 16, color: Colors.white),
+              label: Text(
+                _isUpdatingPassword ? 'Updating...' : 'Update Password',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF475569),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hint,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscureText ? LucideIcons.eyeOff : LucideIcons.eye,
+            size: 18,
+            color: const Color(0xFF94A3B8),
+          ),
+          onPressed: onToggleObscure,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFB),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
       ),
     );
   }

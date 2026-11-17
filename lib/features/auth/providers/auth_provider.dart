@@ -40,14 +40,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
         } catch (_) {
           final supaUser = _repository.currentSupabaseUser;
           if (supaUser != null) {
+            final meta = supaUser.userMetadata ?? {};
             state = AuthState.authenticated(
               UserModel(
                 id: supaUser.id,
                 email: supaUser.email ?? '',
-                fullName: supaUser.userMetadata?['fullName'] ??
-                    supaUser.userMetadata?['name'] ??
-                    supaUser.userMetadata?['full_name'],
-                phone: supaUser.phone,
+                fullName: meta['fullName'] ??
+                    meta['name'] ??
+                    meta['full_name'],
+                phone: supaUser.phone ?? meta['phone'],
+                gender: meta['gender']?.toString(),
+                dateOfBirth: meta['dateOfBirth']?.toString() ?? meta['date_of_birth']?.toString(),
+                weight: meta['weight']?.toString(),
+                height: meta['height']?.toString(),
+                address: meta['address']?.toString(),
               ),
             );
           } else {
@@ -133,13 +139,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> updateProfile({String? fullName, String? phone}) async {
+  Future<void> updateProfile({
+    String? fullName,
+    String? phone,
+    String? gender,
+    String? dateOfBirth,
+    String? weight,
+    String? height,
+    String? address,
+  }) async {
     if (state.user == null) return;
     try {
-      final updated = await _repository.updateProfile(fullName: fullName, phone: phone);
+      final updated = await _repository.updateProfile(
+        fullName: fullName,
+        phone: phone,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
+        weight: weight,
+        height: height,
+        address: address,
+      );
       state = AuthState.authenticated(updated);
     } catch (e) {
       state = AuthState.error(e.toString());
+    }
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _repository.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      return true;
+    } catch (e) {
+      state = AuthState.error(e.toString().replaceAll('Exception: ', ''));
+      return false;
     }
   }
 
