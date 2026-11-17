@@ -29,9 +29,13 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          final session = Supabase.instance.client.auth.currentSession;
-          if (session?.accessToken != null) {
-            options.headers['Authorization'] = 'Bearer ${session!.accessToken}';
+          try {
+            final session = Supabase.instance.client.auth.currentSession;
+            if (session?.accessToken != null) {
+              options.headers['Authorization'] = 'Bearer ${session!.accessToken}';
+            }
+          } catch (_) {
+            // Supabase client not initialized or no active session
           }
           return handler.next(options);
         },

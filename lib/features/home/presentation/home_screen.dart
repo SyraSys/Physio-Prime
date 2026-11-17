@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../doctors/presentation/widgets/doctor_card.dart';
+import '../../doctors/providers/doctors_provider.dart';
 import '../providers/home_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -101,6 +104,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedCity = ref.watch(selectedCityProvider);
+    final symptomsAsync = ref.watch(symptomsProvider);
+    final doctorsAsync = ref.watch(homeDoctorsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
@@ -486,9 +491,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           border: Border.all(color: Colors.white, width: 2.5),
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/doctor_john_avatar.png',
+                          child: CachedNetworkImage(
+                            imageUrl: 'https://t4.ftcdn.net/jpg/02/57/48/67/360_F_257486764_GnnrHRNIBV93mAwR0aiNkS0x5UjDfIcl.jpg',
                             fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.white24),
+                            errorWidget: (context, url, error) => const Icon(LucideIcons.user, color: Colors.white),
                           ),
                         ),
                       ),
@@ -501,7 +508,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: const [
                             Text(
-                              'Dr. John Wilson',
+                              'Dr. Tarannum Sayyed',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -511,7 +518,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             SizedBox(height: 3),
                             Text(
-                              'Physiotherapy',
+                              'Orthopedic & Post-Op Rehab',
                               style: TextStyle(
                                 color: Color(0xD9FFFFFF),
                                 fontSize: 13,
@@ -651,7 +658,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // ==========================================
-              // 6. BEST DOCTORS SECTION
+              // 6. FIND SPECIALIST BY SYMPTOMS SECTION
+              // ==========================================
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Find Specialist By Symptoms',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => context.push('/doctors'),
+                      child: const Text(
+                        'See All',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0891B2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Symptoms Horizontal List (Same UI as Categories Section)
+              symptomsAsync.when(
+                data: (symptoms) {
+                  if (symptoms.isEmpty) return const SizedBox.shrink();
+
+                  return SizedBox(
+                    height: 98,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: symptoms.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 14),
+                      itemBuilder: (context, index) {
+                        final sym = symptoms[index];
+                        return _SymptomTile(
+                          name: sym.title,
+                          imageUrl: sym.image,
+                          onTap: () {
+                            ref.read(doctorFilterProvider.notifier).update((s) => s.copyWith(symptom: sym.title));
+                            context.push('/doctors');
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const SizedBox(height: 98),
+                error: (error, stack) => const SizedBox.shrink(),
+              ),
+
+              // ==========================================
+              // 7. BEST DOCTORS SECTION
               // ==========================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -668,7 +738,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     InkWell(
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/doctors'),
                       child: const Text(
                         'See All',
                         style: TextStyle(
@@ -682,115 +752,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Best Doctor Card (Dr. Darrell Steward)
-              InkWell(
-                onTap: () => context.go('/doctors'),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFF1F5F9)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x0A0F172A),
-                        blurRadius: 14,
-                        offset: Offset(0, 4),
+              // Real Doctor Data from Doctors Repository / API
+              doctorsAsync.when(
+                data: (doctors) {
+                  if (doctors.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Text(
+                        'No doctors currently available.',
+                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Doctor Photo Container
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.asset(
-                          'assets/images/doctor_darrell.png',
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-
-                      // Doctor Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Dr. Darrell Steward',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            const Text(
-                              'Neurology',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: const [
-                                Icon(
-                                  Icons.star_rounded,
-                                  size: 16,
-                                  color: Color(0xFFF59E0B),
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  '5.0',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF334155),
-                                  ),
-                                ),
-                                SizedBox(width: 14),
-                                Icon(
-                                  LucideIcons.mapPin,
-                                  size: 13,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  '1.5 km away',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Right Action Arrow
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF8FAFC),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
+                    );
+                  }
+                  // Render top real doctors using DoctorCard
+                  final displayDoctors = doctors.take(3).toList();
+                  return Column(
+                    children: displayDoctors.map((doc) => DoctorCard(doctor: doc)).toList(),
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF0891B2)),
                   ),
                 ),
+                error: (error, stack) => const SizedBox.shrink(),
               ),
 
               const SizedBox(height: 24),
@@ -844,6 +830,98 @@ class _CategoryTile extends StatelessWidget {
                   width: 38,
                   height: 38,
                   fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SymptomTile extends StatelessWidget {
+  final String name;
+  final String? imageUrl;
+  final VoidCallback onTap;
+
+  const _SymptomTile({
+    required this.name,
+    this.imageUrl,
+    required this.onTap,
+  });
+
+  Widget _buildImage() {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl!,
+        width: 38,
+        height: 38,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => _fallbackIcon(),
+        errorWidget: (context, error, stackTrace) => _fallbackIcon(),
+      );
+    }
+    return _fallbackIcon();
+  }
+
+  Widget _fallbackIcon() {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEBF8FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(
+        LucideIcons.activity,
+        size: 20,
+        color: Color(0xFF0891B2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        width: 76,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x080F172A),
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Center(
+                  child: _buildImage(),
                 ),
               ),
             ),

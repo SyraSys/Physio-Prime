@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/fluid_pressable.dart';
 import '../../domain/doctor_model.dart';
 
 class DoctorCard extends StatelessWidget {
@@ -11,220 +10,197 @@ class DoctorCard extends StatelessWidget {
 
   const DoctorCard({super.key, required this.doctor});
 
+  Widget _buildAvatar(String? photo) {
+    if (photo != null && photo.isNotEmpty) {
+      if (photo.startsWith('assets/')) {
+        return Image.asset(
+          photo,
+          width: 74,
+          height: 74,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
+        );
+      }
+      return CachedNetworkImage(
+        imageUrl: photo,
+        width: 74,
+        height: 74,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          width: 74,
+          height: 74,
+          color: const Color(0xFFF1F5F9),
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => _fallbackAvatar(),
+      );
+    }
+    return _fallbackAvatar();
+  }
+
+  Widget _fallbackAvatar() {
+    return Container(
+      width: 74,
+      height: 74,
+      color: const Color(0xFFF1F5F9),
+      child: const Icon(LucideIcons.user, size: 36, color: Color(0xFF0891B2)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderSoft, width: 0.8),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 16,
+            color: Color(0x0A0F172A),
+            blurRadius: 14,
             offset: Offset(0, 4),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            context.push('/doctor/${doctor.slug}', extra: doctor);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               children: [
-                // Doctor Avatar with soft depth
+                // Doctor Photo Container
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: doctor.photo != null
-                      ? CachedNetworkImage(
-                          imageUrl: doctor.photo!,
-                          width: 78,
-                          height: 78,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(width: 78, height: 78, color: AppColors.surfaceSoft),
-                          errorWidget: (context, url, error) => Container(
-                            width: 78,
-                            height: 78,
-                            color: AppColors.surfaceSoft,
-                            child: const Icon(LucideIcons.user, size: 36, color: AppColors.primary),
-                          ),
-                        )
-                      : Container(
-                          width: 78,
-                          height: 78,
-                          color: AppColors.surfaceSoft,
-                          child: const Icon(LucideIcons.user, size: 36, color: AppColors.primary),
-                        ),
+                  child: _buildAvatar(doctor.photo),
                 ),
                 const SizedBox(width: 14),
 
-                // Name & Credentials
+                // Doctor Information
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Doctor Name
                       Row(
                         children: [
                           Expanded(
                             child: Text(
                               doctor.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2, color: AppColors.headingText),
-                            ),
-                          ),
-                          if (doctor.verified)
-                            const Icon(LucideIcons.checkCircle2, color: AppColors.primary, size: 16),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        doctor.specialty,
-                        style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.star, color: Colors.amber, size: 13),
-                          const SizedBox(width: 3),
-                          Text(
-                            doctor.rating.toStringAsFixed(1),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                          Text(
-                            ' (${doctor.reviewCount}+)',
-                            style: const TextStyle(color: Colors.grey, fontSize: 11),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${doctor.experienceYears}+ yrs exp',
-                            style: const TextStyle(color: AppColors.bodyText, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.mapPin, size: 12, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              doctor.location.displayString,
-                              style: const TextStyle(fontSize: 11, color: AppColors.bodyText),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                                letterSpacing: -0.2,
+                              ),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (doctor.verified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.verified_rounded,
+                              size: 15,
+                              color: Color(0xFF0891B2),
+                            ),
+                          ],
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1, color: AppColors.borderSoft),
-            const SizedBox(height: 12),
+                      const SizedBox(height: 3),
 
-            // Consultation Modes & Pricing
-            Row(
-              children: [
-                if (doctor.homeVisitsEnabled) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceSoft,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.borderSoft),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(LucideIcons.home, size: 12, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text('Home: ₹${doctor.fees.home}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.borderSoft),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(LucideIcons.video, size: 12, color: AppColors.accentTeal),
-                      const SizedBox(width: 4),
-                      Text('Video: ₹${doctor.fees.online}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // Action Buttons with FluidPressable
-            Row(
-              children: [
-                Expanded(
-                  child: FluidPressable(
-                    onTap: () => context.push('/doctor/${doctor.slug}', extra: doctor),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderSoft),
+                      // Specialty / Department
+                      Text(
+                        doctor.specialty,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: const Text('View Profile', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.headingText)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FluidPressable(
-                    onTap: () {
-                      // Hand-off contract to Developer 2's BookingSlotsScreen
-                      context.push(
-                        '/booking-slots',
-                        extra: {
-                          'doctorId': doctor.id,
-                          'doctorSlug': doctor.slug,
-                          'doctorName': doctor.name,
-                          'mode': doctor.homeVisitsEnabled ? 'home' : 'online',
-                          'fee': doctor.startingFee,
-                        },
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x330891B2),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
+                      const SizedBox(height: 8),
+
+                      // Rating Pill & Distance Row
+                      Row(
+                        children: [
+                          // Soft Amber Rating Pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFEF3C7), width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 15,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  doctor.rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFD97706),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Location / Distance
+                          Expanded(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.mapPin,
+                                  size: 13,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    doctor.distanceDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      child: const Text('Book Slot', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

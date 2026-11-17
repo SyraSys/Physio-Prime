@@ -46,6 +46,12 @@ final doctorFilterProvider = StateProvider<DoctorFilterState>((ref) {
   return const DoctorFilterState();
 });
 
+/// Top Doctors for Home Screen (directly loads real backend doctors)
+final homeDoctorsProvider = FutureProvider<List<DoctorModel>>((ref) async {
+  final repo = ref.read(doctorsRepositoryProvider);
+  return repo.getDoctors();
+});
+
 /// List of Doctors reacting to current filter state
 final doctorsListProvider = FutureProvider<List<DoctorModel>>((ref) async {
   final repo = ref.read(doctorsRepositoryProvider);
