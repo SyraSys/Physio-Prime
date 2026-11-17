@@ -56,6 +56,21 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>PhysioPrime requires your location to suggest your service area and accurately dispatch home visit physiotherapists.</string>
 
+	<!-- Razorpay: allow UPI intent hand-off to installed UPI apps -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>credpay</string>
+		<string>bhim</string>
+		<string>upi</string>
+		<string>mobikwik</string>
+		<string>in.fampay.app</string>
+		<string>amazonpay</string>
+		<string>myairtel</string>
+	</array>
+
 	<!-- Deep Linking / Supabase Auth Redirects -->
 	<key>CFBundleURLTypes</key>
 	<array>
