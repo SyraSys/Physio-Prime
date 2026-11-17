@@ -199,7 +199,7 @@ class DoctorsRepository {
       name: 'Dr. Priya Sharma',
       title: 'Senior Sports & Musculoskeletal Specialist',
       specialty: 'Sports Injury & Musculoskeletal Rehab',
-      photo: 'https://images.unsplash.com/photo-1594824813515-3733e83b8a6a?auto=format&fit=crop&q=80&w=400',
+      photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400',
       rating: 4.9,
       reviewCount: 84,
       experienceYears: 8,

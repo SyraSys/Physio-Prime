@@ -49,8 +49,13 @@ class SymptomModel {
     }
 
     String? rawImage = json['image']?.toString();
-    if (rawImage != null && rawImage.startsWith('/')) {
-      rawImage = 'https://www.physio-prime.in$rawImage';
+    if (rawImage != null) {
+      if (rawImage.startsWith('http') && !rawImage.contains('physio-prime.in/images/')) {
+        // Keep valid CDN / Supabase image URLs
+      } else {
+        // Drop relative web paths (e.g. /images/symptoms/...) where website SPA returns HTML
+        rawImage = null;
+      }
     }
 
     return SymptomModel(

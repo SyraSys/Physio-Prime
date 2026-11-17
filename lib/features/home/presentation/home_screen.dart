@@ -864,7 +864,7 @@ class _SymptomTile extends StatelessWidget {
   });
 
   Widget _buildImage() {
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    if (imageUrl != null && imageUrl!.startsWith('http') && !imageUrl!.contains('physio-prime.in/images/')) {
       return CachedNetworkImage(
         imageUrl: imageUrl!,
         width: 38,

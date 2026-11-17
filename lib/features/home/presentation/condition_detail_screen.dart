@@ -47,7 +47,7 @@ class ConditionDetailScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (sym.image != null)
+            if (sym.image != null && sym.image!.startsWith('http') && !sym.image!.contains('physio-prime.in/images/'))
               CachedNetworkImage(
                 imageUrl: sym.image!,
                 height: 200,
