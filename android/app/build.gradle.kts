@@ -24,8 +24,8 @@ android {
         applicationId = "in.physioprime.physio_prime_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // Jitsi Meet SDK (video consultations) requires API 24+.
-        minSdk = 24
+        // Jitsi Meet SDK (video consultations) requires API 26+.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
