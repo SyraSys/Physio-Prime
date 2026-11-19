@@ -51,12 +51,54 @@ class BlogListScreen extends ConsumerWidget {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final post = posts[index] as Map<String, dynamic>;
+                final slug = post['slug']?.toString() ?? post['id']?.toString() ?? 'article-$index';
                 return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(12),
-                    title: Text(post['title']?.toString() ?? 'Health Guide', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(post['summary']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFF1F5F9), width: 1.5),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => context.push('/blog/$slug', extra: post),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBF8FA),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(LucideIcons.bookOpen, size: 20, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post['title']?.toString() ?? 'Health Guide',
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                                ),
+                                if (post['summary'] != null && post['summary'].toString().isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    post['summary']!.toString(),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: AppColors.bodyText, fontSize: 13),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(LucideIcons.chevronRight, size: 18, color: Color(0xFF94A3B8)),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },
