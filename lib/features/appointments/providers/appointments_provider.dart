@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/utils/api_error.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/appointments_repository.dart';
@@ -13,7 +12,7 @@ final appointmentsProvider = FutureProvider<List<AppointmentModel>>((ref) async 
   // Rebuild when the signed-in user changes (login / logout).
   ref.watch(authStateProvider.select((s) => s.user?.id));
   if (!ref.read(authRepositoryProvider).isAuthenticated) {
-    throw const ApiException('Please sign in to view your appointments.', statusCode: 401);
+    return const <AppointmentModel>[];
   }
   final list = await ref.read(appointmentsRepositoryProvider).getAppointments();
   final sorted = [...list]..sort(_compare);
