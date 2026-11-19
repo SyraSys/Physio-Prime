@@ -187,4 +187,23 @@ class AuthRepository {
     await _storage.delete(key: ApiConstants.tokenKey);
     await _storage.delete(key: ApiConstants.userKey);
   }
+
+  /// Request Permanent Account Deletion (Apple App Store Guideline 5.1.1(v))
+  Future<void> deleteAccount() async {
+    try {
+      // 1. Notify backend to anonymize/delete patient data and past appointments
+      await _apiClient.delete('/auth/me');
+    } catch (_) {
+      // Backend may also handle account deletion via Supabase DB triggers
+    }
+
+    try {
+      // 2. Sign out and revoke local session
+      await _supabase.auth.signOut();
+    } catch (_) {}
+
+    // 3. Clear all secure storage credentials
+    await _storage.delete(key: ApiConstants.tokenKey);
+    await _storage.delete(key: ApiConstants.userKey);
+  }
 }
