@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../features/home/domain/category_model.dart';
 import '../../features/home/domain/symptom_model.dart';
 import '../../features/home/presentation/home_screen.dart';
