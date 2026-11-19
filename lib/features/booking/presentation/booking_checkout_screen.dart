@@ -967,6 +967,47 @@ class _CheckoutBottomBar extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'By confirming, you agree to our ',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/terms'),
+                        child: const Text(
+                          'Terms of Service',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ' & ',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/privacy'),
+                        child: const Text(
+                          'Cancellation Policy',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 PrimaryActionButton(
                   label: _label,
                   icon: paymentMode == PaymentMode.prepay ? LucideIcons.lock : LucideIcons.calendarCheck,
