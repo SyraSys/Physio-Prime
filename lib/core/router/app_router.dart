@@ -349,66 +349,50 @@ class ScaffoldWithNavBar extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x140F172A),
-                      blurRadius: 20,
-                      spreadRadius: 0,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x140F172A),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: Offset(0, 4),
                 ),
-                child: Row(
-                  children: [
-                    _NavBarItem(
-                      icon: LucideIcons.home,
-                      label: 'Home',
-                      isSelected: selectedIndex == 0,
-                      onTap: () => _onItemTapped(0, context),
-                    ),
-                    _NavBarItem(
-                      icon: LucideIcons.calendar,
-                      label: 'Bookings',
-                      isSelected: selectedIndex == 1,
-                      onTap: () => _onItemTapped(1, context),
-                    ),
-                    _NavBarItem(
-                      icon: LucideIcons.messageSquare,
-                      label: 'History',
-                      isSelected: selectedIndex == 2,
-                      onTap: () => _onItemTapped(2, context),
-                    ),
-                    _NavBarItem(
-                      icon: LucideIcons.user,
-                      label: 'Profile',
-                      isSelected: selectedIndex == 3,
-                      onTap: () => _onItemTapped(3, context),
-                    ),
-                  ],
+              ],
+            ),
+            child: Row(
+              children: [
+                _NavBarItem(
+                  icon: LucideIcons.home,
+                  label: 'Home',
+                  isSelected: selectedIndex == 0,
+                  onTap: () => _onItemTapped(0, context),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Center(
-                child: Container(
-                  width: 134,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(2.5),
-                  ),
+                _NavBarItem(
+                  icon: LucideIcons.calendar,
+                  label: 'Bookings',
+                  isSelected: selectedIndex == 1,
+                  onTap: () => _onItemTapped(1, context),
                 ),
-              ),
-            ],
+                _NavBarItem(
+                  icon: LucideIcons.messageSquare,
+                  label: 'History',
+                  isSelected: selectedIndex == 2,
+                  onTap: () => _onItemTapped(2, context),
+                ),
+                _NavBarItem(
+                  icon: LucideIcons.user,
+                  label: 'Profile',
+                  isSelected: selectedIndex == 3,
+                  onTap: () => _onItemTapped(3, context),
+                ),
+              ],
+            ),
           ),
         ),
       ),
