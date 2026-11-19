@@ -50,7 +50,7 @@ class MasterLocationsModel {
     return MasterLocationsModel(
       cities: parsedCities,
       areas: parsedAreas,
-      panIndia: json['panIndia'] == true,
+      panIndia: json['panIndia'] == true || (json['panIndia'] != null && json['panIndia'].toString().isNotEmpty),
     );
   }
 }
