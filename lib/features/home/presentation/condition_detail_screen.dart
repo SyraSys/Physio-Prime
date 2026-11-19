@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../doctors/providers/doctors_provider.dart';
 import '../domain/symptom_model.dart';
 import '../providers/home_provider.dart';
 
@@ -118,10 +117,7 @@ class ConditionDetailScreen extends ConsumerWidget {
 
                   ElevatedButton.icon(
                     onPressed: () {
-                      ref.read(doctorFilterProvider.notifier).update(
-                            (s) => s.copyWith(symptom: sym.slug),
-                          );
-                      context.go('/doctors');
+                      context.push('/booking-flow', extra: sym);
                     },
                     icon: const Icon(LucideIcons.calendar, size: 18),
                     label: Text('Book Doctor for ${sym.title}'),
