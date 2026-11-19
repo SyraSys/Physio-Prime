@@ -61,21 +61,18 @@ enum PatientGender {
 }
 
 /// Doctor information carried through the booking flow.
-///
-/// Built from the `/booking-slots` route arguments supplied by the Doctor
-/// Detail screen and optionally enriched with the doctor profile.
 class BookingDoctorInfo {
-  /// Backend doctor slug used for `/doctors/:slug/slots` and `doctorSlug`.
   final String slug;
   final String name;
   final String? title;
   final String? photo;
   final String? categoryId;
+  final String? categoryTitle;
   final ConsultationMode initialMode;
   final bool homeVisitsEnabled;
-
-  /// Consultation fee in paise when the backend profile provides it.
   final int? feePaise;
+  final String? conditionName;
+  final String? symptomSlug;
 
   const BookingDoctorInfo({
     required this.slug,
@@ -83,17 +80,23 @@ class BookingDoctorInfo {
     this.title,
     this.photo,
     this.categoryId,
+    this.categoryTitle,
     this.initialMode = ConsultationMode.home,
     this.homeVisitsEnabled = true,
     this.feePaise,
+    this.conditionName,
+    this.symptomSlug,
   });
 
   BookingDoctorInfo copyWith({
     String? title,
     String? photo,
     String? categoryId,
+    String? categoryTitle,
     bool? homeVisitsEnabled,
     int? feePaise,
+    String? conditionName,
+    String? symptomSlug,
   }) {
     return BookingDoctorInfo(
       slug: slug,
@@ -101,17 +104,15 @@ class BookingDoctorInfo {
       title: title ?? this.title,
       photo: photo ?? this.photo,
       categoryId: categoryId ?? this.categoryId,
+      categoryTitle: categoryTitle ?? this.categoryTitle,
       initialMode: initialMode,
       homeVisitsEnabled: homeVisitsEnabled ?? this.homeVisitsEnabled,
       feePaise: feePaise ?? this.feePaise,
+      conditionName: conditionName ?? this.conditionName,
+      symptomSlug: symptomSlug ?? this.symptomSlug,
     );
   }
 
-  /// Parses the hand-off arguments from Developer 1's Doctor Detail screen.
-  ///
-  /// Accepts either a GoRouter `extra` map or URL query parameters, using the
-  /// doctor slug (`doctorSlug`) when supplied and falling back to `doctorId`
-  /// (which the public API also uses as the slug, e.g. `dr-priya-sharma`).
   static BookingDoctorInfo? fromRouteArgs(Object? extra, [Map<String, String> query = const {}]) {
     final map = Json.map(extra) ?? <String, dynamic>{};
     String? read(String key) => Json.string(map[key]) ?? Json.string(query[key]);
@@ -120,10 +121,6 @@ class BookingDoctorInfo {
     final name = read('doctorName');
     if (slug == null || name == null) return null;
 
-    // `feePaise` is explicit; the legacy `fee` key in the work guide's query
-    // contract was also paise (`doctor.feePaise`). Dev 1's extra map passes a
-    // rupee figure under `fee`, so it is intentionally ignored here and the
-    // authoritative fee is loaded from the doctor profile / booking response.
     final feePaise = Json.integer(map['feePaise'] ?? query['feePaise']);
 
     return BookingDoctorInfo(
@@ -132,9 +129,12 @@ class BookingDoctorInfo {
       title: read('doctorTitle'),
       photo: read('doctorPhoto'),
       categoryId: read('categoryId'),
+      categoryTitle: read('categoryTitle'),
       initialMode: ConsultationMode.tryParse(read('mode')) ?? ConsultationMode.home,
       homeVisitsEnabled: Json.boolean(map['homeVisitsEnabled']) ?? true,
       feePaise: feePaise,
+      conditionName: read('conditionName') ?? read('condition') ?? read('symptom'),
+      symptomSlug: read('symptomSlug') ?? read('symptom'),
     );
   }
 }
@@ -147,8 +147,17 @@ class BookingSelection {
   /// Appointment date in `YYYY-MM-DD` (IST calendar date).
   final String date;
   final String slot;
+  final String? conditionName;
+  final String? slotDisplayTime;
 
-  const BookingSelection({required this.doctor, required this.mode, required this.date, required this.slot});
+  const BookingSelection({
+    required this.doctor,
+    required this.mode,
+    required this.date,
+    required this.slot,
+    this.conditionName,
+    this.slotDisplayTime,
+  });
 }
 
 class BookingAddress {
@@ -189,11 +198,13 @@ class BookingRequest {
   final String patientEmail;
   final PatientGender patientGender;
   final int patientAge;
-  final num patientWeight;
-  final num patientHeight;
+  final num? patientWeight;
+  final num? patientHeight;
   final PatientRelation patientRelation;
   final BookingAddress? address;
   final PaymentMode paymentMode;
+  final int numberOfPatients;
+  final String? specialRequirements;
 
   const BookingRequest({
     required this.doctorSlug,
@@ -207,11 +218,13 @@ class BookingRequest {
     required this.patientEmail,
     required this.patientGender,
     required this.patientAge,
-    required this.patientWeight,
-    required this.patientHeight,
+    this.patientWeight,
+    this.patientHeight,
     required this.patientRelation,
     required this.address,
     required this.paymentMode,
+    this.numberOfPatients = 1,
+    this.specialRequirements,
   });
 
   Map<String, dynamic> toJson() => {
@@ -226,10 +239,15 @@ class BookingRequest {
     'patientEmail': patientEmail,
     'patientGender': patientGender.apiValue,
     'patientAge': patientAge,
-    'patientWeight': patientWeight,
-    'patientHeight': patientHeight,
+    if (patientWeight != null && patientWeight! > 0) 'patientWeight': patientWeight,
+    if (patientHeight != null && patientHeight! > 0) 'patientHeight': patientHeight,
     'patientRelation': patientRelation.apiValue,
     if (address != null) 'address': address!.toJson(),
     'paymentMode': paymentMode.apiValue,
+    if (numberOfPatients > 1) 'numberOfPatients': numberOfPatients,
+    if (specialRequirements != null && specialRequirements!.trim().isNotEmpty) ...{
+      'specialRequirements': specialRequirements!.trim(),
+      'notes': specialRequirements!.trim(),
+    },
   };
 }
