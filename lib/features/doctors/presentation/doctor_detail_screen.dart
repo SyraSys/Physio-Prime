@@ -40,6 +40,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   int _selectedDateIndex = 1; // Default to second date (e.g. 23 Sun) matching screenshot
   String _selectedTimeSlot = '10:00 AM';
   String _selectedMode = 'home';
+  DoctorCategoryOption? _selectedCategoryOption;
 
   final List<String> _timeSlots = const [
     '09:00 AM',
@@ -157,6 +158,10 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
 
   void _proceedToBooking(DoctorModel doc) {
     final selectedDate = _upcomingDates[_selectedDateIndex];
+    final activeHomeFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeHome : doc.fees.home;
+    final activeOnlineFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeOnline : doc.fees.online;
+    final activeFee = _selectedMode == 'home' ? activeHomeFee : activeOnlineFee;
+
     context.push(
       '/booking-slots',
       extra: {
@@ -165,8 +170,11 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
         'doctorName': doc.name,
         'doctorTitle': doc.title,
         'doctorPhoto': doc.photo,
+        'categoryId': _selectedCategoryOption?.categoryId ?? (doc.categoryOptions.isNotEmpty ? doc.categoryOptions.first.categoryId : null),
+        'categoryTitle': _selectedCategoryOption?.title ?? (doc.categoryOptions.isNotEmpty ? doc.categoryOptions.first.title : null),
         'mode': _selectedMode,
-        'fee': _selectedMode == 'home' ? doc.fees.home : doc.fees.online,
+        'fee': activeFee,
+        'feePaise': (activeFee * 100).toInt(),
         'homeVisitsEnabled': doc.homeVisitsEnabled,
         'selectedDate': selectedDate.toIso8601String(),
         'selectedTime': _selectedTimeSlot,
@@ -179,6 +187,13 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     final detailAsync = ref.watch(doctorDetailProvider(widget.slug));
     final reviewsAsync = ref.watch(doctorReviewsProvider(widget.slug));
     final doc = widget.doctor ?? detailAsync.value;
+
+    if (doc != null && doc.categoryOptions.isNotEmpty) {
+      if (_selectedCategoryOption == null ||
+          !doc.categoryOptions.any((c) => c.categoryId == _selectedCategoryOption!.categoryId)) {
+        _selectedCategoryOption = doc.categoryOptions.first;
+      }
+    }
 
     if (doc == null && detailAsync.isLoading) {
       return const Scaffold(
@@ -303,7 +318,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                 // Badge 3: Ratings
                 _buildTealStatBadge(
                   icon: LucideIcons.star,
-                  title: doc.rating > 0 ? doc.rating.toStringAsFixed(1) : '5.0',
+                  title: doc.ratingDisplay,
                   subtitle: 'Ratings',
                 ),
               ],
@@ -467,7 +482,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
                       const Icon(LucideIcons.star, size: 15, color: Color(0xFFF59E0B)),
                       const SizedBox(width: 4),
                       Text(
-                        doc.rating > 0 ? doc.rating.toStringAsFixed(1) : '5.0',
+                        doc.ratingDisplay,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -654,13 +669,59 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 5. TAB 1: BOOK APPOINTMENT (Matches screenshot)
+  // 5. TAB 1: BOOK APPOINTMENT (Matches website screenshot)
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabBookAppointment(DoctorModel doc) {
+    final activeHomeFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeHome : doc.fees.home;
+    final activeOnlineFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeOnline : doc.fees.online;
+    final activeFee = _selectedMode == 'home' ? activeHomeFee : activeOnlineFee;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Schedule Date Header + Calendar Icon Picker
+        // 1. Consultation Fee By Speciality (Matches website: media_1795114387558_b0efb712.jpg)
+        if (doc.categoryOptions.isNotEmpty) ...[
+          _buildConsultationFeeBySpeciality(doc),
+          const SizedBox(height: 24),
+        ],
+
+        // 2. Consultation Mode Selection
+        Text(
+          'Consultation Mode',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            if (doc.homeVisitsEnabled)
+              Expanded(
+                child: _buildModeCard(
+                  title: 'Home Visit',
+                  fee: '₹${activeHomeFee.toInt()}',
+                  icon: LucideIcons.home,
+                  isSelected: _selectedMode == 'home',
+                  onTap: () => setState(() => _selectedMode = 'home'),
+                ),
+              ),
+            if (doc.homeVisitsEnabled) const SizedBox(width: 12),
+            Expanded(
+              child: _buildModeCard(
+                title: 'Online Video',
+                fee: '₹${activeOnlineFee.toInt()}',
+                icon: LucideIcons.video,
+                isSelected: _selectedMode == 'online',
+                onTap: () => setState(() => _selectedMode = 'online'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // 3. Schedule Date Header + Calendar Icon Picker
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -756,7 +817,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
         ),
         const SizedBox(height: 24),
 
-        // Time Slots Section
+        // 4. Time Slots Section
         Text(
           'Select Time Slot',
           style: GoogleFonts.plusJakartaSans(
@@ -797,65 +858,251 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
         ),
         const SizedBox(height: 24),
 
-        // Consultation Mode Selection
-        Text(
-          'Consultation Mode',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            if (doc.homeVisitsEnabled)
-              Expanded(
-                child: _buildModeCard(
-                  title: 'Home Visit',
-                  fee: '₹${doc.fees.home}',
-                  icon: LucideIcons.home,
-                  isSelected: _selectedMode == 'home',
-                  onTap: () => setState(() => _selectedMode = 'home'),
-                ),
-              ),
-            if (doc.homeVisitsEnabled) const SizedBox(width: 12),
-            Expanded(
-              child: _buildModeCard(
-                title: 'Online Video',
-                fee: '₹${doc.fees.online}',
-                icon: LucideIcons.video,
-                isSelected: _selectedMode == 'online',
-                onTap: () => setState(() => _selectedMode = 'online'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
+        // 5. Home Visit Coverage
+        _buildHomeVisitCoverage(doc),
+        const SizedBox(height: 28),
 
-        // Bottom CTA Button: Book Appointment
-        SizedBox(
+        // 6. Bottom CTA Button: Book Appointment with Price
+        Container(
           width: double.infinity,
-          height: 54,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF009AA6), Color(0xFF26B4BD)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33009AA6),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              shadowColor: const Color(0x330891B2),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
             ),
             onPressed: () => _proceedToBooking(doc),
-            child: Text(
-              'Book Appointment',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Book Appointment',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  '₹${activeFee.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// CONSULTATION FEE BY SPECIALITY (Directly matching media_1795114387558_b0efb712.jpg)
+  Widget _buildConsultationFeeBySpeciality(DoctorModel doc) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.fileText, size: 16, color: Color(0xFF0891B2)),
+              const SizedBox(width: 8),
+              Text(
+                'CONSULTATION FEE BY SPECIALITY',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0891B2),
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Column(
+            children: doc.categoryOptions.map((option) {
+              final isSelected = _selectedCategoryOption?.categoryId == option.categoryId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FluidPressable(
+                  onTap: () => setState(() => _selectedCategoryOption = option),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0),
+                        width: isSelected ? 1.5 : 1.0,
+                      ),
+                      boxShadow: isSelected
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x140891B2),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            option.title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13.5,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Home ₹${option.feeHome.toInt()} · Video ₹${option.feeOnline.toInt()}',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Home Visit Coverage (Directly matching media_1795114387558_b0efb712.jpg)
+  Widget _buildHomeVisitCoverage(DoctorModel doc) {
+    final areas = doc.serviceLocations.where((l) => l.area != null && l.area!.isNotEmpty).map((l) => l.area!).toSet().toList();
+    if (areas.isEmpty && doc.location.area != null && doc.location.area!.isNotEmpty) {
+      areas.add(doc.location.area!);
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.mapPin, size: 16, color: Color(0xFF0891B2)),
+              const SizedBox(width: 8),
+              Text(
+                'Home Visit Coverage',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          if (areas.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: areas.map((area) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDFA),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCCFBF1)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.home, size: 12, color: Color(0xFF0891B2)),
+                      const SizedBox(width: 5),
+                      Text(
+                        area,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF0F766E),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(LucideIcons.globe, size: 14, color: Color(0xFF0891B2)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Online (Pan-India) — available anywhere in India',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF0F766E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1012,6 +1259,14 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
           const SizedBox(height: 24),
         ],
 
+        if (doc.categoryOptions.isNotEmpty) ...[
+          _buildConsultationFeeBySpeciality(doc),
+          const SizedBox(height: 20),
+        ],
+
+        _buildHomeVisitCoverage(doc),
+        const SizedBox(height: 24),
+
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1055,16 +1310,26 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
             ),
             Row(
               children: [
-                const Icon(LucideIcons.star, size: 16, color: Color(0xFFF59E0B)),
-                const SizedBox(width: 4),
-                Text(
-                  '${doc.rating} (${doc.reviewCount})',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
+                if (doc.rating > 0) ...[
+                  const Icon(LucideIcons.star, size: 16, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${doc.rating.toStringAsFixed(1)} (${doc.reviewCount})',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
                   ),
-                ),
+                ] else
+                  Text(
+                    'New Practitioner',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0891B2),
+                    ),
+                  ),
               ],
             ),
           ],
@@ -1078,10 +1343,10 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
               child: CircularProgressIndicator(color: AppColors.primary),
             ),
           ),
-          error: (_, _) => _buildReviewFallback(doc),
+          error: (_, _) => _buildNoReviewsState(doc),
           data: (reviews) {
             if (reviews.isEmpty) {
-              return _buildReviewFallback(doc);
+              return _buildNoReviewsState(doc);
             }
             return Column(
               children: reviews.map((r) => _buildReviewCard(r)).toList(),
@@ -1092,28 +1357,45 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     );
   }
 
-  Widget _buildReviewFallback(DoctorModel doc) {
-    return Column(
-      children: [
-        _buildReviewCard(
-          ReviewModel(
-            id: 'rev-1',
-            patientName: 'Ananya Deshmukh',
-            rating: 5.0,
-            comment: 'Dr. ${doc.name} provided an exceptional diagnosis and treatment plan for my back pain. Highly professional and caring!',
-            date: '2 weeks ago',
+  Widget _buildNoReviewsState(DoctorModel doc) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEBF8FA),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.messageSquare, size: 24, color: Color(0xFF0891B2)),
           ),
-        ),
-        _buildReviewCard(
-          ReviewModel(
-            id: 'rev-2',
-            patientName: 'Vikram Joshi',
-            rating: 5.0,
-            comment: 'Very thorough session with visible mobility improvements within two sessions. Highly recommend!',
-            date: '1 month ago',
+          const SizedBox(height: 12),
+          Text(
+            'No Reviews Yet',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F172A),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            'Reviews will appear after patients complete consultations with ${doc.name}.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

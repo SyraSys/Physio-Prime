@@ -22,6 +22,38 @@ class DoctorLocation {
   }
 }
 
+class DoctorServiceLocation {
+  final int? id;
+  final String? name;
+  final String? area;
+  final String? city;
+  final bool active;
+  final bool isPrimary;
+
+  const DoctorServiceLocation({
+    this.id,
+    this.name,
+    this.area,
+    this.city,
+    this.active = true,
+    this.isPrimary = false,
+  });
+
+  factory DoctorServiceLocation.fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return DoctorServiceLocation(
+        id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+        name: json['name']?.toString(),
+        area: json['area']?.toString(),
+        city: json['city']?.toString(),
+        active: json['active'] == true,
+        isPrimary: json['isPrimary'] == true,
+      );
+    }
+    return const DoctorServiceLocation();
+  }
+}
+
 class DoctorFees {
   final num home;
   final num online;
@@ -37,6 +69,53 @@ class DoctorFees {
     }
     return const DoctorFees();
   }
+}
+
+class DoctorCategoryOption {
+  final String categoryId;
+  final String slug;
+  final String title;
+  final num feeHome;
+  final num feeOnline;
+
+  const DoctorCategoryOption({
+    required this.categoryId,
+    required this.slug,
+    required this.title,
+    required this.feeHome,
+    required this.feeOnline,
+  });
+
+  factory DoctorCategoryOption.fromJson(dynamic json) {
+    if (json is Map) {
+      return DoctorCategoryOption(
+        categoryId: json['categoryId']?.toString() ?? json['id']?.toString() ?? '',
+        slug: json['slug']?.toString() ?? '',
+        title: json['title']?.toString() ?? json['name']?.toString() ?? '',
+        feeHome: json['feeHome'] is num
+            ? json['feeHome']
+            : (num.tryParse(json['feeHome']?.toString() ?? '0') ?? 0),
+        feeOnline: json['feeOnline'] is num
+            ? json['feeOnline']
+            : (num.tryParse(json['feeOnline']?.toString() ?? '0') ?? 0),
+      );
+    }
+    return const DoctorCategoryOption(
+      categoryId: '',
+      slug: '',
+      title: '',
+      feeHome: 0,
+      feeOnline: 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'categoryId': categoryId,
+    'slug': slug,
+    'title': title,
+    'feeHome': feeHome,
+    'feeOnline': feeOnline,
+  };
 }
 
 class DoctorModel {
@@ -65,6 +144,8 @@ class DoctorModel {
   final List<String> expertise;
   final List<String> treatments;
   final List<String> categories;
+  final List<DoctorCategoryOption> categoryOptions;
+  final List<DoctorServiceLocation> serviceLocations;
   final String? nextAvailable;
   final num? minFee;
   final num? maxFee;
@@ -77,7 +158,7 @@ class DoctorModel {
     required this.title,
     required this.specialty,
     this.photo,
-    this.rating = 4.9,
+    this.rating = 0.0,
     this.reviewCount = 0,
     this.experienceYears = 5,
     this.patientsTreated = 0,
@@ -96,6 +177,8 @@ class DoctorModel {
     this.expertise = const [],
     this.treatments = const [],
     this.categories = const [],
+    this.categoryOptions = const [],
+    this.serviceLocations = const [],
     this.nextAvailable,
     this.minFee,
     this.maxFee,
@@ -111,14 +194,49 @@ class DoctorModel {
       parsedMaxFee = fr['max'] is num ? fr['max'] : num.tryParse(fr['max']?.toString() ?? '');
     }
 
+    final rawName = json['name']?.toString().trim() ?? 'Physiotherapist';
+    final rawTitle = json['title']?.toString().trim() ?? 'Senior Consultant Physiotherapist';
+    String rawSpecialty = json['specialty']?.toString().trim() ?? '';
+    if (rawSpecialty.isEmpty) {
+      rawSpecialty = rawTitle.isNotEmpty ? rawTitle : 'Physiotherapy Specialist';
+    }
+
+    final rawRating = (json['rating'] is num) ? (json['rating'] as num).toDouble() : 0.0;
+
+    // Handle categories list where items may be Maps or Strings:
+    final List<String> parsedCategories = [];
+    final List<DoctorCategoryOption> parsedCategoryOptions = [];
+    if (json['categories'] is List) {
+      for (final item in json['categories'] as List) {
+        if (item is Map) {
+          final s = item['slug']?.toString();
+          final t = item['title']?.toString();
+          if (s != null && s.isNotEmpty) parsedCategories.add(s);
+          if (t != null && t.isNotEmpty && t != s) parsedCategories.add(t);
+          parsedCategoryOptions.add(DoctorCategoryOption.fromJson(item));
+        } else if (item != null) {
+          final str = item.toString().trim();
+          if (str.isNotEmpty) parsedCategories.add(str);
+        }
+      }
+    }
+
+    // Handle locations list
+    final List<DoctorServiceLocation> parsedLocations = [];
+    if (json['locations'] is List) {
+      for (final loc in json['locations'] as List) {
+        parsedLocations.add(DoctorServiceLocation.fromJson(loc));
+      }
+    }
+
     return DoctorModel(
       id: json['id']?.toString() ?? json['slug']?.toString() ?? '',
       slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Physiotherapist',
-      title: json['title']?.toString() ?? 'Senior Physiotherapist',
-      specialty: json['specialty']?.toString() ?? 'Physiotherapy Specialist',
+      name: rawName,
+      title: rawTitle,
+      specialty: rawSpecialty,
       photo: json['photo']?.toString(),
-      rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : 4.9,
+      rating: rawRating,
       reviewCount: json['reviewCount'] is int ? json['reviewCount'] : int.tryParse(json['reviewCount']?.toString() ?? '0') ?? 0,
       experienceYears: json['experienceYears'] is int ? json['experienceYears'] : int.tryParse(json['experienceYears']?.toString() ?? '5') ?? 5,
       patientsTreated: json['patientsTreated'] is int ? json['patientsTreated'] : int.tryParse(json['patientsTreated']?.toString() ?? '0') ?? 0,
@@ -136,13 +254,85 @@ class DoctorModel {
       registration: json['registration'] is Map<String, dynamic> ? json['registration'] : null,
       expertise: (json['expertise'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       treatments: (json['treatments'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
-      categories: (json['categories'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      categories: parsedCategories,
+      categoryOptions: parsedCategoryOptions,
+      serviceLocations: parsedLocations,
       nextAvailable: json['nextAvailable']?.toString(),
       minFee: parsedMinFee,
       maxFee: parsedMaxFee,
       distance: json['distance']?.toString(),
     );
   }
+
+  DoctorModel copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? title,
+    String? specialty,
+    String? photo,
+    double? rating,
+    int? reviewCount,
+    int? experienceYears,
+    int? patientsTreated,
+    List<String>? languages,
+    DoctorLocation? location,
+    DoctorFees? fees,
+    num? feePaise,
+    bool? verified,
+    bool? featured,
+    bool? homeVisitsEnabled,
+    String? gender,
+    String? bio,
+    List<String>? education,
+    List<String>? experience,
+    Map<String, dynamic>? registration,
+    List<String>? expertise,
+    List<String>? treatments,
+    List<String>? categories,
+    List<DoctorCategoryOption>? categoryOptions,
+    List<DoctorServiceLocation>? serviceLocations,
+    String? nextAvailable,
+    num? minFee,
+    num? maxFee,
+    String? distance,
+  }) {
+    return DoctorModel(
+      id: id ?? this.id,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      specialty: specialty ?? this.specialty,
+      photo: photo ?? this.photo,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      experienceYears: experienceYears ?? this.experienceYears,
+      patientsTreated: patientsTreated ?? this.patientsTreated,
+      languages: languages ?? this.languages,
+      location: location ?? this.location,
+      fees: fees ?? this.fees,
+      feePaise: feePaise ?? this.feePaise,
+      verified: verified ?? this.verified,
+      featured: featured ?? this.featured,
+      homeVisitsEnabled: homeVisitsEnabled ?? this.homeVisitsEnabled,
+      gender: gender ?? this.gender,
+      bio: bio ?? this.bio,
+      education: education ?? this.education,
+      experience: experience ?? this.experience,
+      registration: registration ?? this.registration,
+      expertise: expertise ?? this.expertise,
+      treatments: treatments ?? this.treatments,
+      categories: categories ?? this.categories,
+      categoryOptions: categoryOptions ?? this.categoryOptions,
+      serviceLocations: serviceLocations ?? this.serviceLocations,
+      nextAvailable: nextAvailable ?? this.nextAvailable,
+      minFee: minFee ?? this.minFee,
+      maxFee: maxFee ?? this.maxFee,
+      distance: distance ?? this.distance,
+    );
+  }
+
+  String get ratingDisplay => rating > 0 ? rating.toStringAsFixed(1) : 'New';
 
   String get distanceDisplay {
     if (distance != null && distance!.isNotEmpty) return distance!;
@@ -168,7 +358,7 @@ class DoctorModel {
   }
 
   String get nextAvailableDisplay {
-    if (nextAvailable == null || nextAvailable!.isEmpty) return 'Oct 5';
+    if (nextAvailable == null || nextAvailable!.isEmpty) return 'Available Today';
     try {
       final dt = DateTime.parse(nextAvailable!);
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
