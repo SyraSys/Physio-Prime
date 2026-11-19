@@ -152,7 +152,16 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
       _finalized = true;
       if (mounted) ref.invalidate(appointmentsProvider);
     } catch (e) {
-      _finalizeError = ApiException.from(e).message;
+      final apiErr = ApiException.from(e);
+      // If the backend has no dedicated finalize endpoint or returns 404,
+      // treat as gracefully completed because room webhooks or doctor side handles closure.
+      if (apiErr.isNotFound) {
+        _finalized = true;
+        _finalizeError = null;
+        if (mounted) ref.invalidate(appointmentsProvider);
+      } else {
+        _finalizeError = apiErr.message;
+      }
     } finally {
       _finalizing = false;
       _set(_CallPhase.ended);

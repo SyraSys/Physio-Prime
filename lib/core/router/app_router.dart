@@ -16,6 +16,8 @@ import '../../features/auth/presentation/profile_screen.dart';
 import '../../features/content/presentation/caretaker_modal.dart';
 import '../../features/content/presentation/careers_screen.dart';
 import '../../features/content/presentation/blog_list_screen.dart';
+import '../../features/content/presentation/blog_detail_screen.dart';
+import '../../features/content/presentation/legal_screens.dart';
 import '../../features/content/presentation/static_pages.dart';
 import '../../features/appointments/presentation/appointments_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -24,8 +26,9 @@ import '../../features/appointments/presentation/appointment_detail_screen.dart'
 import '../../features/booking/domain/booking_request_model.dart';
 import '../../features/booking/domain/booking_response_model.dart';
 import '../../features/booking/presentation/booking_checkout_screen.dart';
-import '../../features/booking/presentation/booking_slots_screen.dart';
 import '../../features/booking/presentation/booking_success_screen.dart';
+import '../../features/booking/presentation/booking_menu_screen.dart';
+import '../../features/booking/presentation/booking_wizard_screen.dart';
 import '../../features/dashboard/presentation/notifications_screen.dart';
 import '../../features/dashboard/presentation/prescriptions_screen.dart';
 import '../../features/telehealth/presentation/video_call_screen.dart';
@@ -50,7 +53,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/bookings',
-          builder: (context, state) => const AppointmentsScreen(),
+          builder: (context, state) => const BookingMenuScreen(),
         ),
         GoRoute(
           path: '/history',
@@ -134,6 +137,15 @@ final appRouter = GoRouter(
       builder: (context, state) => const BlogListScreen(),
     ),
     GoRoute(
+      path: '/blog/:slug',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final slug = state.pathParameters['slug'] ?? '';
+        final extra = state.extra is Map<String, dynamic> ? state.extra as Map<String, dynamic> : null;
+        return BlogDetailScreen(slug: slug, initialData: extra);
+      },
+    ),
+    GoRoute(
       path: '/about',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AboutScreen(),
@@ -148,6 +160,68 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PricingScreen(),
     ),
+    GoRoute(
+      path: '/privacy',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PrivacyPolicyScreen(),
+    ),
+    GoRoute(
+      path: '/terms',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const TermsOfServiceScreen(),
+    ),
+    GoRoute(
+      path: '/compliance',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ComplianceScreen(),
+    ),
+    GoRoute(
+      path: '/guides/patients',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PatientGuidesScreen(),
+    ),
+
+    // Complete 4-Step Booking Wizard (Condition -> Doctor -> Schedule -> Confirm)
+    GoRoute(
+      path: '/booking-flow',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extra = state.extra;
+        int step = 1;
+        SymptomModel? condition;
+        String? conditionName;
+        DoctorModel? doctor;
+        BookingDoctorInfo? doctorInfo;
+        ConsultationMode mode = ConsultationMode.home;
+
+        if (extra is Map) {
+          step = (extra['initialStep'] as int?) ?? (extra['step'] as int?) ?? 1;
+          if (extra['condition'] is SymptomModel) condition = extra['condition'] as SymptomModel;
+          conditionName = extra['conditionName']?.toString();
+          if (extra['doctor'] is DoctorModel) doctor = extra['doctor'] as DoctorModel;
+          if (extra['doctorInfo'] is BookingDoctorInfo) doctorInfo = extra['doctorInfo'] as BookingDoctorInfo;
+          mode = ConsultationMode.tryParse(extra['mode']?.toString()) ?? ConsultationMode.home;
+        } else if (extra is SymptomModel) {
+          condition = extra;
+          step = 2;
+        } else if (extra is DoctorModel) {
+          doctor = extra;
+          step = 3;
+        } else if (extra is BookingDoctorInfo) {
+          doctorInfo = extra;
+          step = 3;
+        }
+
+        return BookingWizardScreen(
+          initialStep: step,
+          initialCondition: condition,
+          initialConditionName: conditionName,
+          initialDoctor: doctor,
+          initialDoctorInfo: doctorInfo,
+          initialMode: mode,
+        );
+      },
+    ),
 
     // Developer 2: Booking, Payments, Appointments, Telehealth & Dashboard
     GoRoute(
@@ -161,7 +235,11 @@ final appRouter = GoRouter(
             message: 'Please choose a physiotherapist first, then tap "Book Consultation Slot".',
           );
         }
-        return BookingSlotsScreen(doctor: doctor);
+        return BookingWizardScreen(
+          initialStep: 3,
+          initialDoctorInfo: doctor,
+          initialMode: doctor.initialMode,
+        );
       },
     ),
     GoRoute(

@@ -8,8 +8,10 @@ class ApiConstants {
   static const String supabaseUrl = 'https://usrgvhubmbnyvxocjpga.supabase.co';
   static const String supabaseAnonKey = 'sb_publishable_HzkgcRrXEeCy6JplnnMvFQ_e987BBz2';
 
-  // Razorpay Checkout Public Key
-  static const String razorpayKey = 'rzp_live_TWIeyjSx73SqMV';
+  // Razorpay Checkout Public Key (overridable via --dart-define=RAZORPAY_KEY=...)
+  static const String _defaultRazorpayKey = 'rzp_live_TWIeyjSx73SqMV';
+  static const String razorpayKey = String.fromEnvironment('RAZORPAY_KEY', defaultValue: _defaultRazorpayKey);
+  static bool get isRazorpayTestMode => razorpayKey.startsWith('rzp_test_');
 
   // Support Contacts
   static const String supportPhone = '+919623204165';

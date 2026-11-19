@@ -110,13 +110,47 @@ class HomeRepository {
     ];
   }
 
+  static const List<String> featuredConditionSlugs = [
+    'back-pain',
+    'neck-pain-cervical-spondylosis',
+    'sciatica',
+    'frozen-shoulder',
+    'osteoarthritis',
+    'spondylosis',
+    'stroke-rehabilitation',
+    'traumatic-brain-injury',
+  ];
+
   /// Fetch Medical Symptoms / Conditions Catalogue
-  Future<List<SymptomModel>> getSymptoms() async {
+  ///
+  /// Returns the 8 primary featured conditions shown on the website
+  /// booking and home pages in their canonical order:
+  /// 1. Back Pain
+  /// 2. Neck Pain
+  /// 3. Sciatica
+  /// 4. Frozen Shoulder
+  /// 5. Knee Osteoarthritis
+  /// 6. Spondylosis
+  /// 7. Stroke
+  /// 8. Traumatic Brain Injury
+  Future<List<SymptomModel>> getSymptoms({bool featuredOnly = true}) async {
     try {
       final response = await _apiClient.get('/symptoms');
       final list = response.data['symptoms'] as List<dynamic>? ?? [];
       if (list.isNotEmpty) {
-        return list.map((s) => SymptomModel.fromJson(s as Map<String, dynamic>)).toList();
+        final allModels = list.map((s) => SymptomModel.fromJson(s as Map<String, dynamic>)).toList();
+        if (featuredOnly) {
+          final Map<String, SymptomModel> bySlug = {for (final m in allModels) m.slug: m};
+          final featured = <SymptomModel>[];
+          for (final slug in featuredConditionSlugs) {
+            if (bySlug.containsKey(slug)) {
+              featured.add(bySlug[slug]!);
+            }
+          }
+          if (featured.isNotEmpty) return featured;
+        } else {
+          return allModels;
+        }
       }
     } catch (_) {}
 

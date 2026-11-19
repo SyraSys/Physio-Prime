@@ -155,7 +155,7 @@ class DoctorCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  doctor.rating.toStringAsFixed(1),
+                                  doctor.ratingDisplay,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,

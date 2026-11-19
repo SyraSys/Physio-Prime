@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -35,6 +36,13 @@ class _BookingSlotsScreenState extends ConsumerState<BookingSlotsScreen> {
   late DateTime _selectedDate = _days.first;
   late ConsultationMode _mode = widget.doctor.initialMode;
   String? _selectedSlot;
+  String? _selectedCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategoryId = widget.doctor.categoryId;
+  }
 
   /// Merges route arguments with the live doctor profile when it matches the
   /// requested slug (never trusts a mismatched fallback profile).
@@ -43,12 +51,32 @@ class _BookingSlotsScreenState extends ConsumerState<BookingSlotsScreen> {
     if (profile == null || (profile.slug != base.slug && profile.id != base.slug)) {
       return base;
     }
+
+    String? categoryId = _selectedCategoryId ?? base.categoryId;
+    String? categoryTitle = base.categoryTitle;
+    int? resolvedFeePaise = base.feePaise;
+
+    if (profile.categoryOptions.isNotEmpty) {
+      final opt = profile.categoryOptions.firstWhere(
+        (o) => o.categoryId == categoryId || o.slug == categoryId,
+        orElse: () => profile.categoryOptions.first,
+      );
+      categoryId = opt.categoryId;
+      categoryTitle = opt.title;
+      final activeFee = _mode == ConsultationMode.home ? opt.feeHome : opt.feeOnline;
+      resolvedFeePaise = (activeFee * 100).toInt();
+    } else if (resolvedFeePaise == null) {
+      final activeFee = _mode == ConsultationMode.home ? profile.fees.home : profile.fees.online;
+      resolvedFeePaise = (activeFee * 100).toInt();
+    }
+
     return base.copyWith(
-      title: profile.title.isNotEmpty ? profile.title : null,
+      title: categoryTitle ?? (profile.title.isNotEmpty ? profile.title : null),
       photo: profile.photo,
-      categoryId: base.categoryId ?? (profile.categories.isNotEmpty ? profile.categories.first : null),
+      categoryId: categoryId,
+      categoryTitle: categoryTitle,
       homeVisitsEnabled: profile.homeVisitsEnabled,
-      feePaise: base.feePaise ?? profile.feePaise?.round(),
+      feePaise: resolvedFeePaise,
     );
   }
 
@@ -167,6 +195,70 @@ class _BookingSlotsScreenState extends ConsumerState<BookingSlotsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: _DoctorSummaryCard(doctor: doctor),
                 ),
+                if (profile != null && profile.categoryOptions.length > 1) ...[
+                  const SizedBox(height: 18),
+                  const _SectionLabel(
+                    title: 'Speciality Consultation',
+                    subtitle: 'Choose clinical consultation type',
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: profile.categoryOptions.map((opt) {
+                          final isSelected = doctor.categoryId == opt.categoryId;
+                          final fee = _mode == ConsultationMode.home ? opt.feeHome : opt.feeOnline;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FluidPressable(
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategoryId = opt.categoryId;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0),
+                                    width: isSelected ? 1.5 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      opt.title,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                        color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '₹${fee.toInt()}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const _SectionLabel(title: 'Consultation type'),
                 Padding(

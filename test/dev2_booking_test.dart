@@ -52,7 +52,7 @@ void main() {
   group('Booking request / response', () {
     test('serializes exactly the documented POST /appointments body', () {
       const request = BookingRequest(
-        doctorSlug: 'dr-priya-sharma',
+        doctorSlug: 'doc-tarannum-sayyed',
         categoryId: 'orthopedic',
         mode: ConsultationMode.home,
         date: '2026-11-10',
@@ -70,7 +70,7 @@ void main() {
         paymentMode: PaymentMode.prepay,
       );
       expect(request.toJson(), {
-        'doctorSlug': 'dr-priya-sharma',
+        'doctorSlug': 'doc-tarannum-sayyed',
         'categoryId': 'orthopedic',
         'mode': 'home',
         'date': '2026-11-10',
@@ -93,7 +93,7 @@ void main() {
       final created = BookingCreated.fromResponse({
         'appointment': {
           'id': 'apt_98214',
-          'doctor': {'name': 'Dr. Priya Sharma', 'title': 'Senior Orthopedic'},
+          'doctor': {'name': 'Dr. Tarannum Sayyed', 'title': 'Senior Orthopedic'},
           'feePaise': 79900,
           'status': 'upcoming',
           'paymentStatus': 'pending',
@@ -101,7 +101,7 @@ void main() {
         'razorpayOrder': {'id': 'order_ND82jsl1092', 'amount': 79900, 'currency': 'INR'},
       });
       expect(created.appointment.id, 'apt_98214');
-      expect(created.appointment.doctorName, 'Dr. Priya Sharma');
+      expect(created.appointment.doctorName, 'Dr. Tarannum Sayyed');
       expect(created.appointment.feePaise, 79900);
       expect(created.razorpayOrder?.id, 'order_ND82jsl1092');
       expect(created.razorpayOrder?.amount, 79900);
@@ -125,12 +125,12 @@ void main() {
     test('route args prefer doctorSlug and fall back to doctorId', () {
       final a = BookingDoctorInfo.fromRouteArgs({
         'doctorId': 'uuid-123',
-        'doctorSlug': 'dr-priya-sharma',
-        'doctorName': 'Dr. Priya Sharma',
+        'doctorSlug': 'doc-tarannum-sayyed',
+        'doctorName': 'Dr. Tarannum Sayyed',
         'mode': 'online',
         'fee': 799,
       });
-      expect(a?.slug, 'dr-priya-sharma');
+      expect(a?.slug, 'doc-tarannum-sayyed');
       expect(a?.initialMode, ConsultationMode.online);
       expect(a?.feePaise, isNull, reason: 'rupee "fee" must not be treated as paise');
 
@@ -169,7 +169,7 @@ void main() {
     test('parses list item and derives groups/actions', () {
       final a = AppointmentModel.tryParse({
         'id': 'apt_98214',
-        'doctor': {'name': 'Dr. Priya Sharma', 'title': 'Senior Orthopedic', 'slug': 'dr-priya-sharma'},
+        'doctor': {'name': 'Dr. Tarannum Sayyed', 'title': 'Senior Orthopedic', 'slug': 'doc-tarannum-sayyed'},
         'mode': 'online',
         'date': '2026-11-10',
         'slot': '10:00 AM - 11:00 AM',
@@ -218,14 +218,14 @@ void main() {
     test('prescription parsing keeps only safe document URLs', () {
       final p = PrescriptionModel.tryParse({
         'id': 'rx1',
-        'doctor': {'name': 'Dr. Priya Sharma'},
+        'doctor': {'name': 'Dr. Tarannum Sayyed'},
         'createdAt': '2026-11-10T10:00:00Z',
         'medications': [
           {'name': 'Ibuprofen', 'dosage': '400mg', 'frequency': 'Twice daily', 'duration': '5 days'},
         ],
         'pdfUrl': 'javascript:alert(1)',
       })!;
-      expect(p.doctorName, 'Dr. Priya Sharma');
+      expect(p.doctorName, 'Dr. Tarannum Sayyed');
       expect(p.medications.single.dosage, '400mg');
       expect(p.documentUrl, isNull);
       final q = PrescriptionModel.tryParse({'id': 'rx2', 'documentUrl': 'https://cdn.example.com/rx2.pdf'})!;

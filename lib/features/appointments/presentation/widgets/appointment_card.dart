@@ -87,6 +87,11 @@ class AppointmentCard extends ConsumerWidget {
                                 label: AppointmentStatusStyle.paymentLabel(a.paymentStatus),
                                 color: AppointmentStatusStyle.paymentColor(a.paymentStatus),
                               ),
+                              if (a.paymentStatus.toLowerCase() == 'pending' && a.isUpcoming)
+                                const StatusPill(
+                                  label: '15-min hold',
+                                  color: Color(0xFFD97706),
+                                ),
                             ],
                           ),
                         ],

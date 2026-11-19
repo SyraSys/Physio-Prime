@@ -185,4 +185,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _repository.signOut();
     state = AuthState.unauthenticated();
   }
+
+  /// Request Permanent Account Deletion (Apple App Store Guideline 5.1.1(v))
+  Future<bool> deleteAccount() async {
+    state = AuthState.loading();
+    try {
+      await _repository.deleteAccount();
+      state = AuthState.unauthenticated();
+      return true;
+    } catch (e) {
+      state = AuthState.error(e.toString().replaceAll('Exception: ', ''));
+      return false;
+    }
+  }
 }

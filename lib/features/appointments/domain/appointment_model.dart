@@ -84,9 +84,13 @@ class AppointmentModel {
     final doctor = AppointmentDoctor(
       slug:
           Json.string(json['doctorSlug']) ??
+          Json.string(json['doctor_slug']) ??
           Json.string(doctorJson?['slug']) ??
           Json.string(doctorJson?['id']) ??
-          Json.string(json['doctorId']),
+          Json.string(doctorJson?['doctorSlug']) ??
+          Json.string(doctorJson?['doctor_slug']) ??
+          Json.string(json['doctorId']) ??
+          Json.string(json['doctor_id']),
       name: Json.string(doctorJson?['name']) ?? Json.string(json['doctorName']) ?? 'Physiotherapist',
       title: Json.string(doctorJson?['title']) ?? Json.string(doctorJson?['specialty']),
       photo: Json.string(doctorJson?['photo']) ?? Json.string(doctorJson?['photoUrl']),
@@ -99,14 +103,14 @@ class AppointmentModel {
     return AppointmentModel(
       id: id,
       doctor: doctor,
-      categoryId: Json.string(json['categoryId']),
+      categoryId: Json.string(json['categoryId']) ?? Json.string(json['category_id']),
       mode: ConsultationMode.tryParse(Json.string(json['mode'])),
       date: Json.string(json['date']),
       slot: Json.string(json['slot']),
       status: (Json.string(json['status']) ?? 'upcoming').toLowerCase(),
       paymentStatus: (Json.string(json['paymentStatus']) ?? 'pending').toLowerCase(),
       paymentMode: PaymentMode.tryParse(Json.string(json['paymentMode'])),
-      feePaise: Json.integer(json['feePaise']),
+      feePaise: Json.integer(json['feePaise']) ?? Json.integer(json['fee_paise']),
       symptom: Json.string(json['symptom']),
       patientName: Json.string(p('patientName', 'name')),
       patientPhone: Json.string(p('patientPhone', 'phone')),
@@ -117,10 +121,24 @@ class AppointmentModel {
       patientHeight: Json.number(p('patientHeight', 'height')),
       patientRelation: Json.string(p('patientRelation', 'relation')),
       address: BookingAddress.tryParse(json['address']),
-      videoJoinable: Json.boolean(json['videoJoinable']) == true,
+      videoJoinable:
+          Json.boolean(json['videoJoinable']) == true ||
+          Json.boolean(json['video_joinable']) == true ||
+          Json.boolean(json['canJoinVideo']) == true ||
+          Json.boolean(json['isJoinable']) == true,
       reviewed:
-          Json.boolean(json['reviewed']) == true || Json.boolean(json['hasReview']) == true || Json.map(review) != null,
-      cancelReason: Json.string(json['cancelReason']) ?? Json.string(json['cancellationReason']),
+          Json.boolean(json['reviewed']) == true ||
+          Json.boolean(json['is_reviewed']) == true ||
+          Json.boolean(json['isReviewed']) == true ||
+          Json.boolean(json['hasReview']) == true ||
+          json['reviewedAt'] != null ||
+          json['reviewed_at'] != null ||
+          Json.map(review) != null,
+      cancelReason:
+          Json.string(json['cancelReason']) ??
+          Json.string(json['cancellationReason']) ??
+          Json.string(json['cancel_reason']) ??
+          Json.string(json['cancellation_reason']),
       createdAt: Json.dateTime(json['createdAt']),
     );
   }

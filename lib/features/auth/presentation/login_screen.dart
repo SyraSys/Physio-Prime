@@ -624,14 +624,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 12),
 
               // 6. Terms & Privacy Notice
-              const Text(
-                'By continuing, you agree to PhysioPrime\'s Terms of Service and Privacy Policy.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF94A3B8),
-                  height: 1.35,
-                ),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    'By continuing, you agree to PhysioPrime\'s ',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), height: 1.35),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push('/terms'),
+                    child: const Text(
+                      'Terms of Service',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF0891B2),
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    ' and ',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), height: 1.35),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push('/privacy'),
+                    child: const Text(
+                      'Privacy Policy',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF0891B2),
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    '.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
             ],

@@ -50,4 +50,27 @@ class ContentRepository {
       return [];
     }
   }
+
+  /// Fetch Single Blog Post by Slug
+  Future<Map<String, dynamic>?> getBlogPostBySlug(String slug) async {
+    try {
+      final response = await _apiClient.get('/blog/posts/${Uri.encodeComponent(slug)}');
+      if (response.data is Map && response.data['post'] != null) {
+        return response.data['post'] as Map<String, dynamic>;
+      }
+      return response.data as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetch Dynamic CMS Page Content
+  Future<Map<String, dynamic>?> getCmsPage(String page) async {
+    try {
+      final response = await _apiClient.get('/cms/${Uri.encodeComponent(page)}');
+      return response.data as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

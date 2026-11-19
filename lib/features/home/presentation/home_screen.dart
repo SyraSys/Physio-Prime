@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/ist_time.dart';
+import '../../appointments/providers/appointments_provider.dart';
 import '../../doctors/presentation/widgets/doctor_card.dart';
 import '../../doctors/providers/doctors_provider.dart';
 import '../providers/home_provider.dart';
@@ -106,6 +108,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final selectedCity = ref.watch(selectedCityProvider);
     final symptomsAsync = ref.watch(symptomsProvider);
     final doctorsAsync = ref.watch(homeDoctorsProvider);
+    final appointmentsAsync = ref.watch(appointmentsProvider);
+    final upcomingAppointment = appointmentsAsync.value?.where((a) => a.isUpcoming).firstOrNull;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
@@ -427,16 +431,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // ==========================================
-              // 4. UPCOMING APPOINTMENTS SECTION
+              // 4. UPCOMING APPOINTMENTS / QUICK BOOKING
               // ==========================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Upcoming Appointments',
-                      style: TextStyle(
+                    Text(
+                      upcomingAppointment != null ? 'Upcoming Appointment' : 'Book a Session',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
@@ -445,9 +449,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     InkWell(
                       onTap: () => context.go('/bookings'),
-                      child: const Text(
-                        'See All',
-                        style: TextStyle(
+                      child: Text(
+                        upcomingAppointment != null ? 'See All' : 'Explore All',
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF0891B2),
@@ -458,119 +462,203 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Upcoming Appointment Card
-              InkWell(
-                onTap: () => context.go('/bookings'),
-                borderRadius: BorderRadius.circular(22),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF009AA6), Color(0xFF26B4BD)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33009AA6),
-                        blurRadius: 16,
-                        offset: Offset(0, 6),
+              if (upcomingAppointment != null)
+                InkWell(
+                  onTap: () => context.push('/appointment/${upcomingAppointment.id}'),
+                  borderRadius: BorderRadius.circular(22),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF009AA6), Color(0xFF26B4BD)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Doctor Avatar with white ring border
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33009AA6),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
                         ),
-                        child: ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: 'https://t4.ftcdn.net/jpg/02/57/48/67/360_F_257486764_GnnrHRNIBV93mAwR0aiNkS0x5UjDfIcl.jpg',
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(color: Colors.white24),
-                            errorWidget: (context, url, error) => const Icon(LucideIcons.user, color: Colors.white),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                          ),
+                          child: ClipOval(
+                            child: upcomingAppointment.doctor.photo != null && upcomingAppointment.doctor.photo!.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: upcomingAppointment.doctor.photo!,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(color: Colors.white24),
+                                    errorWidget: (context, url, error) => const Icon(LucideIcons.user, color: Colors.white),
+                                  )
+                                : const Icon(LucideIcons.user, color: Colors.white),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-
-                      // Doctor Info
-                      Expanded(
-                        child: Column(
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                upcomingAppointment.doctor.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                upcomingAppointment.doctor.title ?? 'Physiotherapy Session',
+                                style: const TextStyle(
+                                  color: Color(0xD9FFFFFF),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text(
-                              'Dr. Tarannum Sayyed',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                letterSpacing: -0.2,
-                              ),
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.calendar, size: 14, color: Colors.white),
+                                const SizedBox(width: 6),
+                                Text(
+                                  upcomingAppointment.calendarDate != null
+                                      ? IstTime.shortDate(upcomingAppointment.calendarDate!)
+                                      : (upcomingAppointment.date ?? 'Upcoming'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 3),
-                            Text(
-                              'Orthopedic & Post-Op Rehab',
-                              style: TextStyle(
-                                color: Color(0xD9FFFFFF),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
+                            if (upcomingAppointment.slot != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(LucideIcons.clock, size: 14, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    upcomingAppointment.slot!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                            ],
                           ],
                         ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                InkWell(
+                  onTap: () => context.push('/booking-flow'),
+                  borderRadius: BorderRadius.circular(22),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF009AA6), Color(0xFF26B4BD)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-
-                      // Schedule Info
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Row(
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33009AA6),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(LucideIcons.calendarCheck, color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(LucideIcons.calendar, size: 14, color: Colors.white),
-                              SizedBox(width: 6),
+                            children: const [
                               Text(
-                                'Sat, Mar 22',
+                                'Book Certified Physiotherapist',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'Home visits & online sessions from ₹799',
+                                style: TextStyle(
+                                  color: Color(0xD9FFFFFF),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(LucideIcons.clock, size: 14, color: Colors.white),
-                              SizedBox(width: 6),
-                              Text(
-                                '01:15 PM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ],
-                      ),
-                    ],
+                          child: const Text(
+                            'Book Now',
+                            style: TextStyle(
+                              color: Color(0xFF009AA6),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
               // ==========================================
               // 5. ALL CATEGORIES SECTION
@@ -615,43 +703,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _CategoryTile(
                       name: 'Orthopedic',
                       iconAsset: 'assets/images/cat_orthopedic.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/orthopedic'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: 'Sport injury',
                       iconAsset: 'assets/images/cat_sport_injury.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/sports-injury'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: 'Neurological',
                       iconAsset: 'assets/images/cat_neurological.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/neurological'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: 'Pediatric',
                       iconAsset: 'assets/images/cat_pediatric.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/pediatrics'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: 'Cardiac',
                       iconAsset: 'assets/images/cat_cardiac.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/cardio-pulmonary'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: 'Geriatric',
                       iconAsset: 'assets/images/cat_geriatric.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/geriatric'),
                     ),
                     const SizedBox(width: 14),
                     _CategoryTile(
                       name: "Women's Health",
                       iconAsset: 'assets/images/cat_womens_health.png',
-                      onTap: () => context.go('/doctors'),
+                      onTap: () => context.push('/categories/womens-health'),
                     ),
                   ],
                 ),
@@ -803,7 +891,7 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(30),
       child: SizedBox(
         width: 72,
         child: Column(
@@ -814,8 +902,8 @@ class _CategoryTile extends StatelessWidget {
               height: 58,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x080F172A),
@@ -824,12 +912,14 @@ class _CategoryTile extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Center(
-                child: Image.asset(
-                  iconAsset,
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.contain,
+              child: ClipOval(
+                child: Center(
+                  child: Image.asset(
+                    iconAsset,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
@@ -865,13 +955,15 @@ class _SymptomTile extends StatelessWidget {
 
   Widget _buildImage() {
     if (imageUrl != null && imageUrl!.startsWith('http') && !imageUrl!.contains('physio-prime.in/images/')) {
-      return CachedNetworkImage(
-        imageUrl: imageUrl!,
-        width: 38,
-        height: 38,
-        fit: BoxFit.contain,
-        placeholder: (context, url) => _fallbackIcon(),
-        errorWidget: (context, error, stackTrace) => _fallbackIcon(),
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => _fallbackIcon(),
+          errorWidget: (context, error, stackTrace) => _fallbackIcon(),
+        ),
       );
     }
     return _fallbackIcon();
@@ -879,11 +971,11 @@ class _SymptomTile extends StatelessWidget {
 
   Widget _fallbackIcon() {
     return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBF8FA),
-        borderRadius: BorderRadius.circular(12),
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEBF8FA),
+        shape: BoxShape.circle,
       ),
       child: const Icon(
         LucideIcons.activity,
@@ -897,19 +989,19 @@ class _SymptomTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(30),
       child: SizedBox(
         width: 76,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x080F172A),
@@ -918,8 +1010,7 @@ class _SymptomTile extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+              child: ClipOval(
                 child: Center(
                   child: _buildImage(),
                 ),
