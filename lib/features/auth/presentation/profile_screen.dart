@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1395,9 +1396,110 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 28),
+          const Divider(color: Color(0xFFF1F5F9), height: 1),
+          const SizedBox(height: 24),
+
+          // iOS App Store Requirement: In-App Account Deletion
+          Row(
+            children: [
+              const Icon(LucideIcons.alertTriangle, size: 16, color: Color(0xFFEF4444)),
+              const SizedBox(width: 8),
+              Text(
+                'Delete Account',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Permanently delete your PhysioPrime patient account, health profile, session history, and stored medical prescriptions. This action is irreversible.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF64748B),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+                side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                backgroundColor: const Color(0xFFFEF2F2),
+              ),
+              onPressed: () => _confirmAccountDeletion(context),
+              icon: const Icon(LucideIcons.trash2, size: 16, color: Color(0xFFEF4444)),
+              label: Text(
+                'Delete Account Permanently',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmAccountDeletion(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => CupertinoAlertDialog(
+        title: const Text('Delete Account?'),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 8.0),
+          child: Text(
+            'Are you sure you want to permanently delete your PhysioPrime account? All your medical appointments, prescriptions, and health records will be erased immediately. This cannot be undone.',
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await ref.read(authStateProvider.notifier).deleteAccount();
+      if (success) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Your account and personal health data have been deleted.'),
+            backgroundColor: Color(0xFF0F172A),
+          ),
+        );
+        router.go('/');
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete account. Please try again or contact support.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildPasswordLabel(String label) {
