@@ -187,6 +187,13 @@ class _DetailBody extends ConsumerWidget {
             child: Text(a.symptom!, style: const TextStyle(fontSize: 13.5, color: AppColors.headingText, height: 1.45)),
           ),
         ],
+        if (a.paymentStatus.toLowerCase() == 'pending' && a.isUpcoming) ...[
+          const SizedBox(height: 14),
+          const InfoBanner(
+            icon: LucideIcons.clock,
+            message: 'Unpaid prepay bookings are held for 15 minutes before the slot is released to other patients. Complete payment to secure your appointment.',
+          ),
+        ],
         const SizedBox(height: 14),
         InfoCard(
           title: 'Payment',
