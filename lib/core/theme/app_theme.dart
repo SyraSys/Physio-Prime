@@ -51,6 +51,17 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: AppColors.background,
 
+      // High-performance iOS & Android Cupertino slide-and-parallax page transition theme
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        },
+      ),
+
       // Optical sizing: negative tracking on large text, tight leading on headings, looser on body
       textTheme: TextTheme(
         headlineLarge: GoogleFonts.plusJakartaSans(

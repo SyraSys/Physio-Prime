@@ -79,21 +79,30 @@ final appRouter = GoRouter(
       ],
     ),
 
-    // Developer 1 Modal & Deep Routes
+    // Developer 1 Modal & Deep Routes (Smooth Apple iOS Bottom Sheet Entrance)
     GoRoute(
       path: '/login',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const LoginScreen(),
+      pageBuilder: (context, state) => _buildModalPage(
+        state: state,
+        child: const LoginScreen(),
+      ),
     ),
     GoRoute(
       path: '/register',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const RegisterScreen(),
+      pageBuilder: (context, state) => _buildModalPage(
+        state: state,
+        child: const RegisterScreen(),
+      ),
     ),
     GoRoute(
       path: '/forgot-password',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ForgotPasswordScreen(),
+      pageBuilder: (context, state) => _buildModalPage(
+        state: state,
+        child: const ForgotPasswordScreen(),
+      ),
     ),
     GoRoute(
       path: '/categories/:slug',
@@ -130,7 +139,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/caretaker',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const CaretakerScreen(),
+      pageBuilder: (context, state) => _buildModalPage(
+        state: state,
+        child: const CaretakerScreen(),
+      ),
     ),
     GoRoute(
       path: '/careers',
@@ -315,6 +327,36 @@ final appRouter = GoRouter(
   ],
 );
 
+/// Modal presentation transition builder: bottom-sheet slide up with subtle fade.
+Page<dynamic> _buildModalPage({
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.0, 0.15),
+          end: Offset.zero,
+        ).animate(curvedAnimation),
+        child: FadeTransition(
+          opacity: curvedAnimation,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 class ScaffoldWithNavBar extends StatelessWidget {
   final Widget child;
   const ScaffoldWithNavBar({required this.child, super.key});
@@ -346,12 +388,30 @@ class ScaffoldWithNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
     final selectedIndex = _calculateSelectedIndex(context);
 
     return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFFF8FAFB),
-      body: child,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 240),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (switchChild, animation) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+            child: switchChild,
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<String>(location),
+          child: child,
+        ),
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
