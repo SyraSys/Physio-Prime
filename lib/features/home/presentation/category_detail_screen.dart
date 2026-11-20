@@ -27,6 +27,7 @@ class CategoryDetailScreen extends ConsumerStatefulWidget {
 
 class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   late Future<List<DoctorModel>> _doctorsFuture;
+  List<DoctorModel>? _loadedDoctors;
 
   @override
   void initState() {
@@ -37,12 +38,89 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   void _loadDoctors() {
     final repo = ref.read(doctorsRepositoryProvider);
     _doctorsFuture = repo.getDoctors(category: widget.slug).then((list) async {
-      if (list.isNotEmpty) return list;
-      // If endpoint returned empty, query all live doctors and apply website matching algorithm
-      final allDocs = await repo.getDoctors();
-      final catTitle = widget.category?.title ?? widget.slug;
-      return allDocs.where((d) => _matchesCategory(d, widget.slug, catTitle)).toList();
+      List<DoctorModel> result = list;
+      if (result.isEmpty) {
+        // If endpoint returned empty, query all live doctors and apply website matching algorithm
+        final allDocs = await repo.getDoctors();
+        final catTitle = widget.category?.title ?? widget.slug;
+        result = allDocs.where((d) => _matchesCategory(d, widget.slug, catTitle)).toList();
+      }
+      if (mounted) {
+        setState(() {
+          _loadedDoctors = result;
+        });
+      }
+      return result;
+    }).catchError((error) {
+      if (mounted) {
+        setState(() {
+          _loadedDoctors = [];
+        });
+      }
+      return <DoctorModel>[];
     });
+  }
+
+  String _getVerifiedDoctorsBadgeText(CategoryModel? cat) {
+    if (_loadedDoctors != null) {
+      final count = _loadedDoctors!.length;
+      if (count > 0) {
+        return '$count Verified ${count == 1 ? 'Doctor' : 'Doctors'}';
+      }
+      return 'Verified Specialists';
+    }
+    final fallbackCount = cat?.doctorCount ?? 0;
+    if (fallbackCount > 0) {
+      return '$fallbackCount Verified ${fallbackCount == 1 ? 'Doctor' : 'Doctors'}';
+    }
+    return 'Verified Specialists';
+  }
+
+  String _getRatingText() {
+    if (_loadedDoctors != null && _loadedDoctors!.isNotEmpty) {
+      double totalRating = 0.0;
+      int ratedCount = 0;
+      for (final doc in _loadedDoctors!) {
+        if (doc.rating > 0) {
+          totalRating += doc.rating;
+          ratedCount++;
+        }
+      }
+      if (ratedCount > 0) {
+        return '${(totalRating / ratedCount).toStringAsFixed(1)} Rating';
+      }
+    }
+    return '4.9 Rating';
+  }
+
+  String _getStartingFeeText() {
+    if (_loadedDoctors != null && _loadedDoctors!.isNotEmpty) {
+      int lowest = 999999;
+      for (final doc in _loadedDoctors!) {
+        DoctorCategoryOption? matchedOpt;
+        for (final opt in doc.categoryOptions) {
+          if (opt.slug.toLowerCase() == widget.slug.toLowerCase() ||
+              opt.categoryId.toLowerCase() == widget.slug.toLowerCase() ||
+              opt.title.toLowerCase().contains(widget.slug.toLowerCase())) {
+            matchedOpt = opt;
+            break;
+          }
+        }
+        final num rawFee = matchedOpt != null && matchedOpt.feeHome > 0
+            ? matchedOpt.feeHome
+            : (doc.startingFee > 0
+                ? doc.startingFee
+                : (doc.fees.home > 0 ? doc.fees.home : doc.fees.online));
+        final int fee = rawFee.toInt();
+        if (fee > 0 && fee < lowest) {
+          lowest = fee;
+        }
+      }
+      if (lowest < 999999) {
+        return 'From ₹$lowest';
+      }
+    }
+    return 'From ₹800';
   }
 
   static bool _matchesCategory(DoctorModel doc, String catSlug, String catTitle) {
@@ -82,6 +160,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedCity = ref.watch(selectedCityProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final cat = widget.category ??
         categoriesAsync.value?.where((c) => c.slug == widget.slug).firstOrNull;
@@ -182,13 +261,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (cat?.image != null && cat!.image!.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      child: Stack(
-                        children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: Stack(
+                      children: [
+                        if (cat?.image != null && cat!.image!.isNotEmpty)
                           CachedNetworkImage(
-                            imageUrl: cat.image!,
+                            imageUrl: cat!.image!,
                             height: 160,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -201,43 +280,58 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                               color: const Color(0xFFEBF8FA),
                               child: const Icon(LucideIcons.activity, size: 40, color: Color(0xFF0891B2)),
                             ),
-                          ),
-                          Positioned(
-                            top: 14,
-                            right: 14,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.94),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x1A000000),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(LucideIcons.badgeCheck, size: 14, color: Color(0xFF0891B2)),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    '1 Verified Doctor',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                ],
+                          )
+                        else
+                          Container(
+                            height: 100,
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFE0F2FE), Color(0xFFECFDF5)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
                             ),
+                            child: const Center(
+                              child: Icon(LucideIcons.activity, size: 36, color: Color(0xFF0891B2)),
+                            ),
                           ),
-                        ],
-                      ),
+                        Positioned(
+                          top: 14,
+                          right: 14,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.94),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1A000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.badgeCheck, size: 14, color: Color(0xFF0891B2)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  _getVerifiedDoctorsBadgeText(cat),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -271,7 +365,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                             _buildStatBadge(
                               icon: LucideIcons.star,
                               iconColor: const Color(0xFFF59E0B),
-                              label: '4.9 Rating',
+                              label: _getRatingText(),
                             ),
                             _buildStatBadge(
                               icon: LucideIcons.home,
@@ -281,7 +375,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                             _buildStatBadge(
                               icon: LucideIcons.tag,
                               iconColor: const Color(0xFF10B981),
-                              label: 'From ₹800',
+                              label: _getStartingFeeText(),
                             ),
                           ],
                         ),
@@ -376,14 +470,14 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               const SizedBox(height: 16),
             ],
 
-            // 4. Verified Specialists Section (Matches Website https://www.physio-prime.in/categories/orthopedic)
+            // 4. Verified Specialists Section (Matches Website https://www.physio-prime.in/categories/sports-injury)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Verified Specialists in Nagpur',
+                    'Verified Specialists in $selectedCity',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -393,7 +487,9 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Licensed clinical physiotherapists available for home visits & online consultations',
+                    _loadedDoctors != null && _loadedDoctors!.isNotEmpty
+                        ? '${_loadedDoctors!.length} licensed clinical ${_loadedDoctors!.length == 1 ? 'physiotherapist' : 'physiotherapists'} available for home visits & online consultations'
+                        : 'Licensed clinical physiotherapists available for home visits & online consultations',
                     style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
                   ),
                 ],
