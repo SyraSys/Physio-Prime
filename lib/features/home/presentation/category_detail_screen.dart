@@ -265,7 +265,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     child: Stack(
                       children: [
-                        if (cat?.image != null && cat!.image!.isNotEmpty)
+                        if (cat != null && cat.image != null && cat.image!.isNotEmpty)
                           CachedNetworkImage(
                             imageUrl: cat.image!,
                             height: 160,
