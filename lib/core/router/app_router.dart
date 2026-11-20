@@ -33,14 +33,56 @@ import '../../features/booking/presentation/booking_wizard_screen.dart';
 import '../../features/dashboard/presentation/notifications_screen.dart';
 import '../../features/dashboard/presentation/prescriptions_screen.dart';
 import '../../features/telehealth/presentation/video_call_screen.dart';
+import '../../features/splash/presentation/splash_screen.dart';
+import 'router_state.dart';
 import '../widgets/state_views.dart';
+
+export 'router_state.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/',
+  initialLocation: '/splash',
+  redirect: (context, state) {
+    final isSplash = state.matchedLocation == '/splash';
+    if (!isAppInitialized) {
+      if (!isSplash) {
+        final loc = state.matchedLocation;
+        return (loc.isEmpty || loc == '/')
+            ? '/splash'
+            : '/splash?from=${Uri.encodeComponent(loc)}';
+      }
+      return null;
+    }
+    // If already initialized and route is /splash without explicit force, return home
+    if (isSplash && state.uri.queryParameters['force'] != 'true') {
+      return '/';
+    }
+    return null;
+  },
   routes: [
+    GoRoute(
+      path: '/splash',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final target = state.uri.queryParameters['from'];
+        return CustomTransitionPage<void>(
+          key: state.pageKey,
+          child: SplashScreen(targetLocation: target),
+          transitionDuration: const Duration(milliseconds: 320),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeInOut,
+              ),
+              child: child,
+            );
+          },
+        );
+      },
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return ScaffoldWithNavBar(navigationShell: navigationShell);
@@ -92,8 +134,11 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/dashboard',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const DashboardScreen(),
+      redirect: (context, state) => '/',
+    ),
+    GoRoute(
+      path: '/auth-callback',
+      redirect: (context, state) => '/',
     ),
 
     // Developer 1 Modal & Deep Routes (Smooth Apple iOS Bottom Sheet Entrance)
@@ -401,10 +446,10 @@ class ScaffoldWithNavBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: RepaintBoundary(
             child: Container(
-              height: 64,
+              height: 66,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(33),
                 border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
                 boxShadow: const [
                   BoxShadow(
@@ -475,33 +520,39 @@ class _NavBarItem extends StatelessWidget {
         onTap: onTap,
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 22,
-              color: color,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 21,
                 color: color,
               ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              width: 22,
-              height: 2.5,
-              decoration: BoxDecoration(
-                color: isSelected ? activeColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
+                  height: 1.15,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Container(
+                width: 20,
+                height: 2.5,
+                decoration: BoxDecoration(
+                  color: isSelected ? activeColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
