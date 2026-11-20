@@ -7,12 +7,16 @@ import '../data/dashboard_repository.dart';
 import '../domain/notification_model.dart';
 import '../domain/prescription_model.dart';
 
-const _signedOut = ApiException('Please sign in to continue.', statusCode: 401);
-
 final prescriptionsProvider = FutureProvider<List<PrescriptionModel>>((ref) async {
   ref.watch(authStateProvider.select((s) => s.user?.id));
-  if (!ref.read(authRepositoryProvider).isAuthenticated) throw _signedOut;
-  return ref.read(dashboardRepositoryProvider).getPrescriptions();
+  if (!ref.read(authRepositoryProvider).isAuthenticated) {
+    return const <PrescriptionModel>[];
+  }
+  try {
+    return await ref.read(dashboardRepositoryProvider).getPrescriptions();
+  } catch (_) {
+    return const <PrescriptionModel>[];
+  }
 });
 
 final notificationsProvider = StateNotifierProvider<NotificationsController, AsyncValue<List<NotificationModel>>>((
@@ -42,7 +46,7 @@ class NotificationsController extends StateNotifier<AsyncValue<List<Notification
 
   Future<void> load() async {
     if (!_isSignedIn()) {
-      state = AsyncValue.error(_signedOut, StackTrace.current);
+      state = const AsyncValue.data(<NotificationModel>[]);
       return;
     }
     if (!state.hasValue) state = const AsyncValue.loading();

@@ -14,9 +14,13 @@ final appointmentsProvider = FutureProvider<List<AppointmentModel>>((ref) async 
   if (!ref.read(authRepositoryProvider).isAuthenticated) {
     return const <AppointmentModel>[];
   }
-  final list = await ref.read(appointmentsRepositoryProvider).getAppointments();
-  final sorted = [...list]..sort(_compare);
-  return sorted;
+  try {
+    final list = await ref.read(appointmentsRepositoryProvider).getAppointments();
+    final sorted = [...list]..sort(_compare);
+    return sorted;
+  } catch (_) {
+    return const <AppointmentModel>[];
+  }
 });
 
 int _compare(AppointmentModel a, AppointmentModel b) {
