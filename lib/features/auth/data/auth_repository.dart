@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,26 +13,54 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 class AuthRepository {
   final ApiClient _apiClient;
-  final SupabaseClient _supabase = Supabase.instance.client;
+  SupabaseClient? _supabaseInstance;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  AuthRepository(this._apiClient);
+  AuthRepository(this._apiClient, [this._supabaseInstance]);
 
-  User? get currentSupabaseUser => _supabase.auth.currentUser;
-  Session? get currentSession => _supabase.auth.currentSession;
+  SupabaseClient get _supabase {
+    if (_supabaseInstance != null) return _supabaseInstance!;
+    try {
+      _supabaseInstance = Supabase.instance.client;
+      return _supabaseInstance!;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  User? get currentSupabaseUser {
+    try {
+      return _supabase.auth.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Session? get currentSession {
+    try {
+      return _supabase.auth.currentSession;
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool get isAuthenticated => currentSession != null;
 
   /// Listen to Supabase Auth state changes (OAuth redirects, token refresh, sign-in/out)
   void listenAuthStateChanges(void Function(Session? session) onSessionChange) {
-    _supabase.auth.onAuthStateChange.listen((data) async {
-      if (data.session?.accessToken != null) {
-        await _storage.write(key: ApiConstants.tokenKey, value: data.session!.accessToken);
-      } else if (data.event == AuthChangeEvent.signedOut) {
-        await _storage.delete(key: ApiConstants.tokenKey);
-        await _storage.delete(key: ApiConstants.userKey);
-      }
-      onSessionChange(data.session);
-    });
+    try {
+      _supabase.auth.onAuthStateChange.listen((data) async {
+        if (data.session?.accessToken != null) {
+          await _storage.write(key: ApiConstants.tokenKey, value: data.session!.accessToken);
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          await _storage.delete(key: ApiConstants.tokenKey);
+          await _storage.delete(key: ApiConstants.userKey);
+        }
+        onSessionChange(data.session);
+      });
+    } catch (_) {
+      // Safe fallback when running in offline or test environments
+    }
   }
 
   /// Sign In with Email & Password
@@ -65,7 +94,7 @@ class AuthRepository {
         'fullName': fullName.trim(),
         if (phone != null) 'phone': phone.trim(),
       },
-      emailRedirectTo: 'physioprime://auth-callback',
+      emailRedirectTo: kIsWeb ? '${Uri.base.origin}/' : 'physioprime://auth-callback',
     );
 
     if (response.session?.accessToken != null) {
@@ -76,17 +105,23 @@ class AuthRepository {
 
   /// Google OAuth Sign In
   Future<bool> signInWithGoogle() async {
+    final redirectUrl = kIsWeb
+        ? '${Uri.base.origin}/'
+        : 'physioprime://auth-callback';
     return await _supabase.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: 'physioprime://auth-callback',
+      redirectTo: redirectUrl,
     );
   }
 
   /// Send Password Reset Email
   Future<void> resetPassword(String email) async {
+    final redirectUrl = kIsWeb
+        ? '${Uri.base.origin}/forgot-password'
+        : 'physioprime://reset-password';
     await _supabase.auth.resetPasswordForEmail(
       email.trim(),
-      redirectTo: 'physioprime://reset-password',
+      redirectTo: redirectUrl,
     );
   }
 
