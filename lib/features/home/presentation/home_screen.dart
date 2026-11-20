@@ -236,81 +236,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // ==========================================
-              // 2. SEARCH & FILTER BAR
+              // 2. SEARCH BAR
               // ==========================================
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Row(
-                  children: [
-                    // Search Pill Input
-                    Expanded(
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFFF1F5F9)),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x080F172A),
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onSubmitted: (query) {
-                            if (query.trim().isNotEmpty) {
-                              context.go('/doctors');
-                            }
-                          },
-                          decoration: const InputDecoration(
-                            hintText: 'Search Doctors, Symptoms...',
-                            hintStyle: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            prefixIcon: Icon(
-                              LucideIcons.search,
-                              size: 19,
-                              color: Color(0xFF94A3B8),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 13),
-                          ),
-                        ),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x080F172A),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Filter Button
-                    InkWell(
-                      onTap: () => context.go('/doctors'),
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2DD4BF),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x332DD4BF),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          LucideIcons.sliders,
-                          size: 20,
-                          color: Colors.white,
-                        ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onSubmitted: (query) {
+                      if (query.trim().isNotEmpty) {
+                        context.go('/doctors');
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Search Doctors, Symptoms...',
+                      hintStyle: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w400,
                       ),
+                      prefixIcon: Icon(
+                        LucideIcons.search,
+                        size: 19,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 13),
                     ),
-                  ],
+                  ),
                 ),
               ),
 
