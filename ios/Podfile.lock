@@ -1,0 +1,58 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_secure_storage (6.0.0):
+    - Flutter
+  - Giphy (2.2.12):
+    - libwebp
+  - jitsi_meet_flutter_sdk (13.3.0):
+    - Flutter
+    - JitsiMeetSDK (= 13.3.1)
+  - JitsiMeetSDK (13.3.1):
+    - Giphy (= 2.2.12)
+    - JitsiWebRTC (~> 155.0)
+  - JitsiWebRTC (155.0.1)
+  - libwebp (1.6.0):
+    - libwebp/demux (= 1.6.0)
+    - libwebp/mux (= 1.6.0)
+    - libwebp/sharpyuv (= 1.6.0)
+    - libwebp/webp (= 1.6.0)
+  - libwebp/demux (1.6.0):
+    - libwebp/webp
+  - libwebp/mux (1.6.0):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.6.0)
+  - libwebp/webp (1.6.0):
+    - libwebp/sharpyuv
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - jitsi_meet_flutter_sdk (from `.symlinks/plugins/jitsi_meet_flutter_sdk/ios`)
+
+SPEC REPOS:
+  trunk:
+    - Giphy
+    - JitsiMeetSDK
+    - JitsiWebRTC
+    - libwebp
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  jitsi_meet_flutter_sdk:
+    :path: ".symlinks/plugins/jitsi_meet_flutter_sdk/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  Giphy: 83628960ed04e1c3428ff1b4fb2b027f65e82f50
+  jitsi_meet_flutter_sdk: 5910497221927d86879a5a3010af4f1649ad77e4
+  JitsiMeetSDK: b99a09c4674727fc926fdf60adeac85cef67ed3b
+  JitsiWebRTC: a8ac2b2b54c523fb156016de4ab86b6666dc99d9
+  libwebp: af5937a13536ef73f3784d69cc342b98961acf33
+
+PODFILE CHECKSUM: 805fb685471c7530af6e440db9a335b4c5ece47e
+
+COCOAPODS: 1.17.0

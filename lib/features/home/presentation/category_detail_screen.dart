@@ -1,5 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -265,9 +265,9 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     child: Stack(
                       children: [
-                        if (cat?.image != null && cat!.image!.isNotEmpty)
+                        if (cat != null && cat.image != null && cat.image!.isNotEmpty)
                           CachedNetworkImage(
-                            imageUrl: cat!.image!,
+                            imageUrl: cat.image,
                             height: 160,
                             width: double.infinity,
                             fit: BoxFit.cover,
