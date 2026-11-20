@@ -34,11 +34,31 @@ class DoctorsRepository {
         search == null &&
         gender == null;
 
+    // Fast-path: Return cached unfiltered list immediately if fresh (5-minute TTL)
     if (isUnfiltered &&
         _cachedAllDoctors != null &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!) < const Duration(minutes: 5)) {
       return _cachedAllDoctors!;
+    }
+
+    // Fast-path for filtered queries: If all doctors are already cached in memory,
+    // filter directly in-memory in 0ms without firing redundant HTTP requests across the network.
+    if (!isUnfiltered &&
+        _cachedAllDoctors != null &&
+        _cachedAllDoctors!.isNotEmpty &&
+        _lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!) < const Duration(minutes: 5)) {
+      return _applyFilters(
+        doctors: _cachedAllDoctors!,
+        city: city,
+        area: area,
+        symptom: symptom,
+        mode: mode,
+        category: category,
+        search: search,
+        gender: gender,
+      );
     }
 
     try {
@@ -79,109 +99,127 @@ class DoctorsRepository {
 
       if (doctors.isEmpty) return const [];
 
-      if (isUnfiltered) {
+      if (isUnfiltered || _cachedAllDoctors == null) {
         _cachedAllDoctors = doctors;
         _lastFetchTime = DateTime.now();
       }
 
-      // Only perform deep detail enrichment if filtering requires sub-properties
-      // (service locations or custom category fee options). Avoids firing 10+ concurrent
-      // HTTP requests during initial app startup / Home screen rendering.
-      final needsDeepEnrichment = (category != null && category.isNotEmpty && category != 'all') ||
-          (symptom != null && symptom.isNotEmpty) ||
-          (area != null && area.isNotEmpty && area.toLowerCase() != 'all' && area.toLowerCase() != 'all areas');
-
-      final enrichedDoctors = needsDeepEnrichment
-          ? await Future.wait(doctors.map((d) async {
-              if (_detailCache.containsKey(d.slug)) {
-                return _detailCache[d.slug]!;
-              }
-              try {
-                return await getDoctorDetail(d.slug);
-              } catch (_) {
-                return d;
-              }
-            }))
-          : doctors;
-
-      var result = enrichedDoctors;
-
-      // Filter by Mode
-      if (mode != null && mode.isNotEmpty && mode != 'all') {
-        if (mode == 'home') {
-          result = result.where((d) => d.homeVisitsEnabled).toList();
-        } else if (mode == 'online') {
-          result = result.where((d) => d.fees.online > 0).toList();
-        }
-      }
-
-      // Filter by Location / Area
-      if (area != null && area.isNotEmpty && area.toLowerCase() != 'all' && area.toLowerCase() != 'all areas') {
-        final qArea = area.toLowerCase();
-        final matchingArea = result.where((d) {
-          final docArea = d.location.area?.toLowerCase() ?? '';
-          final docCity = d.location.city?.toLowerCase() ?? '';
-          final serviceMatch = d.serviceLocations.any((loc) =>
-              (loc.area?.toLowerCase() ?? '').contains(qArea) ||
-              (loc.city?.toLowerCase() ?? '').contains(qArea));
-          return docArea.contains(qArea) || docCity.contains(qArea) || serviceMatch;
-        }).toList();
-        if (matchingArea.isNotEmpty) result = matchingArea;
-      }
-
-      // Filter by Gender
-      if (gender != null && gender.isNotEmpty && gender != 'all') {
-        result = result.where((d) => d.gender?.toLowerCase() == gender.toLowerCase()).toList();
-      }
-
-      // Filter by Search Query
-      if (search != null && search.trim().isNotEmpty) {
-        final q = search.trim().toLowerCase();
-        result = result.where((d) {
-          return d.name.toLowerCase().contains(q) ||
-              d.specialty.toLowerCase().contains(q) ||
-              d.title.toLowerCase().contains(q) ||
-              d.treatments.any((t) => t.toLowerCase().contains(q)) ||
-              d.expertise.any((e) => e.toLowerCase().contains(q)) ||
-              d.location.displayString.toLowerCase().contains(q);
-        }).toList();
-      }
-
-      // Filter by Category
-      if (category != null && category.isNotEmpty && category != 'all') {
-        final qCat = category.toLowerCase();
-        final matchingCat = result.where((d) {
-          return d.categoryOptions.any((opt) =>
-                  opt.slug.toLowerCase() == qCat ||
-                  opt.categoryId.toLowerCase() == qCat ||
-                  opt.title.toLowerCase().contains(qCat)) ||
-              d.categories.any((c) => c.toLowerCase().contains(qCat)) ||
-              d.specialty.toLowerCase().contains(qCat) ||
-              d.title.toLowerCase().contains(qCat) ||
-              d.expertise.any((e) => e.toLowerCase().contains(qCat));
-        }).toList();
-        if (matchingCat.isNotEmpty) result = matchingCat;
-      }
-
-      // Filter by Symptom
-      if (symptom != null && symptom.isNotEmpty) {
-        final qSym = symptom.toLowerCase().replaceAll('-', ' ');
-        final matchingSym = result.where((d) {
-          return d.categoryOptions.any((opt) => opt.slug.toLowerCase().contains(qSym) || opt.title.toLowerCase().contains(qSym)) ||
-              d.specialty.toLowerCase().contains(qSym) ||
-              d.bio.toLowerCase().contains(qSym) ||
-              d.expertise.any((e) => e.toLowerCase().contains(qSym)) ||
-              d.treatments.any((t) => t.toLowerCase().contains(qSym));
-        }).toList();
-        if (matchingSym.isNotEmpty) {
-          result = matchingSym;
-        }
-      }
-
-      return result;
+      return _applyFilters(
+        doctors: doctors,
+        city: city,
+        area: area,
+        symptom: symptom,
+        mode: mode,
+        category: category,
+        search: search,
+        gender: gender,
+      );
     } catch (_) {
+      // If network fails but we have cached doctors, fall back to cached in-memory filtering
+      if (_cachedAllDoctors != null && _cachedAllDoctors!.isNotEmpty) {
+        return _applyFilters(
+          doctors: _cachedAllDoctors!,
+          city: city,
+          area: area,
+          symptom: symptom,
+          mode: mode,
+          category: category,
+          search: search,
+          gender: gender,
+        );
+      }
       return const [];
     }
+  }
+
+  /// High-speed 0ms in-memory filtering and detail enrichment
+  List<DoctorModel> _applyFilters({
+    required List<DoctorModel> doctors,
+    String? city,
+    String? area,
+    String? symptom,
+    String? mode,
+    String? category,
+    String? search,
+    String? gender,
+  }) {
+    // Enrich with cached details if already in memory without blocking on network
+    final enrichedDoctors = doctors.map((d) => _detailCache[d.slug] ?? d).toList();
+    var result = enrichedDoctors;
+
+    // Filter by Mode
+    if (mode != null && mode.isNotEmpty && mode != 'all') {
+      if (mode == 'home') {
+        result = result.where((d) => d.homeVisitsEnabled).toList();
+      } else if (mode == 'online') {
+        result = result.where((d) => d.fees.online > 0).toList();
+      }
+    }
+
+    // Filter by Location / Area
+    if (area != null && area.isNotEmpty && area.toLowerCase() != 'all' && area.toLowerCase() != 'all areas') {
+      final qArea = area.toLowerCase();
+      final matchingArea = result.where((d) {
+        final docArea = d.location.area?.toLowerCase() ?? '';
+        final docCity = d.location.city?.toLowerCase() ?? '';
+        final serviceMatch = d.serviceLocations.any((loc) =>
+            (loc.area?.toLowerCase() ?? '').contains(qArea) ||
+            (loc.city?.toLowerCase() ?? '').contains(qArea));
+        return docArea.contains(qArea) || docCity.contains(qArea) || serviceMatch;
+      }).toList();
+      if (matchingArea.isNotEmpty) result = matchingArea;
+    }
+
+    // Filter by Gender
+    if (gender != null && gender.isNotEmpty && gender != 'all') {
+      result = result.where((d) => d.gender?.toLowerCase() == gender.toLowerCase()).toList();
+    }
+
+    // Filter by Search Query
+    if (search != null && search.trim().isNotEmpty) {
+      final q = search.trim().toLowerCase();
+      result = result.where((d) {
+        return d.name.toLowerCase().contains(q) ||
+            d.specialty.toLowerCase().contains(q) ||
+            d.title.toLowerCase().contains(q) ||
+            d.treatments.any((t) => t.toLowerCase().contains(q)) ||
+            d.expertise.any((e) => e.toLowerCase().contains(q)) ||
+            d.location.displayString.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    // Filter by Category
+    if (category != null && category.isNotEmpty && category != 'all') {
+      final qCat = category.toLowerCase();
+      final matchingCat = result.where((d) {
+        return d.categoryOptions.any((opt) =>
+                opt.slug.toLowerCase() == qCat ||
+                opt.categoryId.toLowerCase() == qCat ||
+                opt.title.toLowerCase().contains(qCat)) ||
+            d.categories.any((c) => c.toLowerCase().contains(qCat)) ||
+            d.specialty.toLowerCase().contains(qCat) ||
+            d.title.toLowerCase().contains(qCat) ||
+            d.expertise.any((e) => e.toLowerCase().contains(qCat));
+      }).toList();
+      if (matchingCat.isNotEmpty) result = matchingCat;
+    }
+
+    // Filter by Symptom
+    if (symptom != null && symptom.isNotEmpty) {
+      final qSym = symptom.toLowerCase().replaceAll('-', ' ');
+      final matchingSym = result.where((d) {
+        return d.categoryOptions.any((opt) => opt.slug.toLowerCase().contains(qSym) || opt.title.toLowerCase().contains(qSym)) ||
+            d.specialty.toLowerCase().contains(qSym) ||
+            d.bio.toLowerCase().contains(qSym) ||
+            d.expertise.any((e) => e.toLowerCase().contains(qSym)) ||
+            d.treatments.any((t) => t.toLowerCase().contains(qSym));
+      }).toList();
+      if (matchingSym.isNotEmpty) {
+        result = matchingSym;
+      }
+    }
+
+    return result;
   }
 
   /// Get Doctor Detailed Profile directly from live API

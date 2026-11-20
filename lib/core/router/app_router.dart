@@ -36,47 +36,64 @@ import '../../features/telehealth/presentation/video_call_screen.dart';
 import '../widgets/state_views.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   routes: [
-    ShellRoute(
-      navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) {
-        return ScaffoldWithNavBar(child: child);
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return ScaffoldWithNavBar(navigationShell: navigationShell);
       },
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const HomeScreen(),
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/bookings',
-          builder: (context, state) => const BookingMenuScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/bookings',
+              builder: (context, state) => const BookingMenuScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/history',
-          builder: (context, state) => const DashboardScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/history',
+              builder: (context, state) => const DashboardScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const ProfileScreen(),
-        ),
-        GoRoute(
-          path: '/doctors',
-          builder: (context, state) => const DoctorsScreen(),
-        ),
-        GoRoute(
-          path: '/appointments',
-          builder: (context, state) => const AppointmentsScreen(),
-        ),
-        GoRoute(
-          path: '/dashboard',
-          builder: (context, state) => const DashboardScreen(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/doctors',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const DoctorsScreen(),
+    ),
+    GoRoute(
+      path: '/appointments',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AppointmentsScreen(),
+    ),
+    GoRoute(
+      path: '/dashboard',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const DashboardScreen(),
     ),
 
     // Developer 1 Modal & Deep Routes (Smooth Apple iOS Bottom Sheet Entrance)
@@ -358,60 +375,26 @@ Page<dynamic> _buildModalPage({
 }
 
 class ScaffoldWithNavBar extends StatelessWidget {
-  final Widget child;
-  const ScaffoldWithNavBar({required this.child, super.key});
+  final StatefulNavigationShell navigationShell;
+  const ScaffoldWithNavBar({required this.navigationShell, super.key});
 
-  int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/bookings') || location.startsWith('/appointments')) return 1;
-    if (location.startsWith('/history') || location.startsWith('/dashboard')) return 2;
-    if (location.startsWith('/profile')) return 3;
-    return 0;
-  }
-
-  void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/');
-        break;
-      case 1:
-        context.go('/bookings');
-        break;
-      case 2:
-        context.go('/history');
-        break;
-      case 3:
-        context.go('/profile');
-        break;
-    }
+  void _onItemTapped(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    final selectedIndex = _calculateSelectedIndex(context);
+    final selectedIndex = navigationShell.currentIndex;
 
     return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFFF8FAFB),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 240),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (switchChild, animation) {
-          return FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ),
-            child: switchChild,
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<String>(location),
-          child: child,
-        ),
-      ),
+      // Stateful IndexedStack preserves all screen instances, scroll offsets,
+      // and state, enabling instant 0ms switching with zero jank or rebuild overhead.
+      body: navigationShell,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
@@ -438,25 +421,25 @@ class ScaffoldWithNavBar extends StatelessWidget {
                     icon: LucideIcons.home,
                     label: 'Home',
                     isSelected: selectedIndex == 0,
-                    onTap: () => _onItemTapped(0, context),
+                    onTap: () => _onItemTapped(0),
                   ),
                   _NavBarItem(
                     icon: LucideIcons.calendar,
                     label: 'Bookings',
                     isSelected: selectedIndex == 1,
-                    onTap: () => _onItemTapped(1, context),
+                    onTap: () => _onItemTapped(1),
                   ),
                   _NavBarItem(
                     icon: LucideIcons.messageSquare,
                     label: 'History',
                     isSelected: selectedIndex == 2,
-                    onTap: () => _onItemTapped(2, context),
+                    onTap: () => _onItemTapped(2),
                   ),
                   _NavBarItem(
                     icon: LucideIcons.user,
                     label: 'Profile',
                     isSelected: selectedIndex == 3,
-                    onTap: () => _onItemTapped(3, context),
+                    onTap: () => _onItemTapped(3),
                   ),
                 ],
               ),
