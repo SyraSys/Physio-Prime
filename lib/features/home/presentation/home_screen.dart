@@ -763,7 +763,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     InkWell(
-                      onTap: () => context.push('/doctors'),
+                      onTap: () => context.push('/conditions'),
                       child: const Text(
                         'See All',
                         style: TextStyle(

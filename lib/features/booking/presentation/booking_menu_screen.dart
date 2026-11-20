@@ -13,7 +13,8 @@ import '../../home/domain/category_model.dart';
 import '../../home/domain/symptom_model.dart';
 import '../../home/providers/home_provider.dart';
 import '../domain/booking_request_model.dart';
-import 'widgets/symptom_card.dart';
+import '../../home/data/conditions_catalogue.dart';
+import '../../home/presentation/widgets/conditions_catalogue_view.dart';
 
 /// The Booking Menu Screen mounted at `/bookings`.
 ///
@@ -315,234 +316,18 @@ class _SymptomsTabView extends ConsumerStatefulWidget {
 
 class _SymptomsTabViewState extends ConsumerState<_SymptomsTabView>
     with AutomaticKeepAliveClientMixin {
-  final TextEditingController _symptomSearchController = TextEditingController();
-  late String _selectedCategoryChip;
-
-  static const _categoryTabs = [
-    'All',
-    'Musculoskeletal / Orthopedic',
-    'Sports Injuries',
-    'Neurological Conditions',
-    'Pediatric Conditions',
-    'Cardio-Respiratory',
-    'Women\'s Health',
-    'Geriatric Care',
-  ];
-
   @override
   bool get wantKeepAlive => true;
 
   @override
-  void initState() {
-    super.initState();
-    _selectedCategoryChip = widget.filterNotifier.value;
-    widget.filterNotifier.addListener(_onExternalFilterChanged);
-  }
-
-  void _onExternalFilterChanged() {
-    if (mounted && _selectedCategoryChip != widget.filterNotifier.value) {
-      setState(() {
-        _selectedCategoryChip = widget.filterNotifier.value;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.filterNotifier.removeListener(_onExternalFilterChanged);
-    _symptomSearchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     super.build(context);
-    final symptomsAsync = ref.watch(symptomsProvider);
-
-    return symptomsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      error: (e, _) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(LucideIcons.alertTriangle, size: 32, color: AppColors.error),
-            const SizedBox(height: 8),
-            Text('Could not load conditions catalogue', style: GoogleFonts.inter(color: const Color(0xFF64748B))),
-            TextButton(
-              onPressed: () => ref.invalidate(symptomsProvider),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-      data: (conditions) {
-        final query = _symptomSearchController.text.trim().toLowerCase();
-        final filtered = conditions.where((item) {
-          final matchesQuery = query.isEmpty ||
-              item.title.toLowerCase().contains(query) ||
-              item.description.toLowerCase().contains(query) ||
-              item.symptomsList.any((s) => s.toLowerCase().contains(query));
-
-          if (!matchesQuery) return false;
-
-          if (_selectedCategoryChip == 'All') return true;
-          return item.department?.toLowerCase().contains(_selectedCategoryChip.toLowerCase()) ?? false;
-        }).toList();
-
-        return CustomScrollView(
-          key: const PageStorageKey('symptoms_scroll'),
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0F172A),
-                          letterSpacing: -0.3,
-                        ),
-                        children: [
-                          const TextSpan(text: 'What brings you in? '),
-                          TextSpan(
-                            text: 'Choose condition',
-                            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0891B2)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Select from the 8 primary conditions we treat',
-                      style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Stadium Pill Search Bar (DESIGN.md 3.2)
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x080F172A),
-                            blurRadius: 10,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.search, size: 18, color: Color(0xFF94A3B8)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _symptomSearchController,
-                              onChanged: (_) => setState(() {}),
-                              style: GoogleFonts.inter(fontSize: 13.5, color: const Color(0xFF0F172A)),
-                              decoration: InputDecoration(
-                                hintText: 'Search conditions or symptoms...',
-                                hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          if (_symptomSearchController.text.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                _symptomSearchController.clear();
-                                setState(() {});
-                              },
-                              child: const Icon(LucideIcons.x, size: 16, color: Color(0xFF94A3B8)),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Horizontal Category Filter Chips (Clamping physics prevents gesture blocking)
-                    SizedBox(
-                      height: 34,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: _categoryTabs.length,
-                        separatorBuilder: (context, index) => const SizedBox(width: 8),
-                        itemBuilder: (context, idx) {
-                          final tab = _categoryTabs[idx];
-                          final isSelected = tab == _selectedCategoryChip;
-
-                          return ChoiceChip(
-                            label: Text(tab),
-                            selected: isSelected,
-                            onSelected: (val) {
-                              if (val) {
-                                setState(() => _selectedCategoryChip = tab);
-                                widget.filterNotifier.value = tab;
-                              }
-                            },
-                            selectedColor: const Color(0xFF0891B2),
-                            backgroundColor: Colors.white,
-                            side: BorderSide(
-                              color: isSelected ? Colors.transparent : const Color(0xFFF1F5F9),
-                              width: 1.2,
-                            ),
-                            labelStyle: GoogleFonts.inter(
-                              fontSize: 11.5,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? Colors.white : const Color(0xFF475569),
-                            ),
-                            showCheckmark: false,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            if (filtered.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'No matching conditions found.\nTry a different search term.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(color: const Color(0xFF64748B)),
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 110),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final item = filtered[index];
-                      return SymptomCard(
-                        item: item,
-                        onTap: () => widget.onOpenBooking(condition: item),
-                      );
-                    },
-                    childCount: filtered.length,
-                  ),
-                ),
-              ),
-          ],
-        );
+    return ConditionsCatalogueView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
+      onConditionSelected: (condition) {
+        final liveSymptoms = ref.read(symptomsProvider).value;
+        final sym = ConditionsCatalogue.findOrCreateSymptom(condition.slug, liveSymptoms: liveSymptoms);
+        context.push('/conditions/${condition.slug}', extra: sym);
       },
     );
   }

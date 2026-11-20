@@ -6,6 +6,7 @@ import '../../features/home/domain/symptom_model.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/home/presentation/category_detail_screen.dart';
 import '../../features/home/presentation/condition_detail_screen.dart';
+import '../../features/home/presentation/conditions_screen.dart';
 import '../../features/doctors/domain/doctor_model.dart';
 import '../../features/doctors/presentation/doctors_screen.dart';
 import '../../features/doctors/presentation/doctor_detail_screen.dart';
@@ -102,6 +103,11 @@ final appRouter = GoRouter(
         final cat = state.extra is CategoryModel ? state.extra as CategoryModel : null;
         return CategoryDetailScreen(slug: slug, category: cat);
       },
+    ),
+    GoRoute(
+      path: '/conditions',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ConditionsScreen(),
     ),
     GoRoute(
       path: '/conditions/:slug',

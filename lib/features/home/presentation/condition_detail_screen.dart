@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../data/conditions_catalogue.dart';
 import '../domain/symptom_model.dart';
 import '../providers/home_provider.dart';
 
@@ -21,25 +22,21 @@ class ConditionDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final symptomsAsync = ref.watch(symptomsProvider);
     final sym = symptom ??
-        symptomsAsync.value?.where((s) => s.slug == slug).firstOrNull;
-
-    if (sym == null && symptomsAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (sym == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Condition Detail')),
-        body: const Center(child: Text('Condition details not found.')),
-      );
-    }
+        symptomsAsync.value?.where((s) => s.slug == slug).firstOrNull ??
+        ConditionsCatalogue.findOrCreateSymptom(slug, liveSymptoms: symptomsAsync.value);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(sym.title),
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/conditions');
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
