@@ -27,7 +27,7 @@ class NotificationsScreen extends ConsumerWidget {
         leading: IconButton(
           tooltip: 'Back',
           icon: const Icon(LucideIcons.arrowLeft),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/dashboard'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/history'),
         ),
         title: const Text('Notifications'),
         actions: [
