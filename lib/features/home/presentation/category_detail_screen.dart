@@ -263,21 +263,21 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Stats cluster
-                        Row(
+                        // Stats cluster (Responsive Wrap prevents 21px RenderFlex overflow on narrow screens)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             _buildStatBadge(
                               icon: LucideIcons.star,
                               iconColor: const Color(0xFFF59E0B),
                               label: '4.9 Rating',
                             ),
-                            const SizedBox(width: 8),
                             _buildStatBadge(
                               icon: LucideIcons.home,
                               iconColor: const Color(0xFF0891B2),
                               label: 'Home & Online',
                             ),
-                            const SizedBox(width: 8),
                             _buildStatBadge(
                               icon: LucideIcons.tag,
                               iconColor: const Color(0xFF10B981),
@@ -624,15 +624,21 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '₹${fee.toInt()}/session',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0891B2),
+              Flexible(
+                child: Text(
+                  '₹${fee.toInt()}/session',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0891B2),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton(
                     onPressed: () => context.push('/doctor/${doc.slug}', extra: doc),

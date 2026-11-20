@@ -806,15 +806,21 @@ class _CategoriesTabViewState extends ConsumerState<_CategoriesTabView>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '₹${fee.toInt()}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0891B2),
+              Flexible(
+                child: Text(
+                  '₹${fee.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0891B2),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton(
                     onPressed: () => context.push('/doctor/${doc.slug}', extra: doc),
@@ -1201,15 +1207,21 @@ class _DoctorsTabViewState extends ConsumerState<_DoctorsTabView>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '₹${fee.toInt()}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0891B2),
+              Flexible(
+                child: Text(
+                  '₹${fee.toInt()}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0891B2),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton(
                     onPressed: () => context.push('/doctor/${doc.slug}', extra: doc),
