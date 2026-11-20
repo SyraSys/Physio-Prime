@@ -17,6 +17,8 @@ class DoctorCard extends StatelessWidget {
           photo,
           width: 74,
           height: 74,
+          cacheWidth: 148,
+          cacheHeight: 148,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
         );
@@ -25,6 +27,8 @@ class DoctorCard extends StatelessWidget {
         imageUrl: photo,
         width: 74,
         height: 74,
+        memCacheWidth: 222,
+        memCacheHeight: 222,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           width: 74,

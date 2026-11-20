@@ -83,8 +83,21 @@ Future<void> main() async {
   );
 }
 
-class PhysioPrimeApp extends StatelessWidget {
+class PhysioPrimeApp extends StatefulWidget {
   const PhysioPrimeApp({super.key});
+
+  @override
+  State<PhysioPrimeApp> createState() => _PhysioPrimeAppState();
+}
+
+class _PhysioPrimeAppState extends State<PhysioPrimeApp> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-warm & decode top-of-fold brand assets into GPU memory to eliminate initial frame jank
+    precacheImage(const AssetImage('assets/images/pp_monogram.png'), context);
+    precacheImage(const AssetImage('assets/images/hero_doctor.png'), context);
+  }
 
   @override
   Widget build(BuildContext context) {

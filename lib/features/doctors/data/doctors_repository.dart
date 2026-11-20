@@ -11,6 +11,8 @@ final doctorsRepositoryProvider = Provider<DoctorsRepository>((ref) {
 class DoctorsRepository {
   final ApiClient _apiClient;
   final Map<String, DoctorModel> _detailCache = {};
+  List<DoctorModel>? _cachedAllDoctors;
+  DateTime? _lastFetchTime;
 
   DoctorsRepository(this._apiClient);
 
@@ -24,6 +26,21 @@ class DoctorsRepository {
     String? search,
     String? gender,
   }) async {
+    final isUnfiltered = city == null &&
+        area == null &&
+        symptom == null &&
+        mode == null &&
+        category == null &&
+        search == null &&
+        gender == null;
+
+    if (isUnfiltered &&
+        _cachedAllDoctors != null &&
+        _lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!) < const Duration(minutes: 5)) {
+      return _cachedAllDoctors!;
+    }
+
     try {
       final queryParams = <String, dynamic>{};
       if (city != null && city.isNotEmpty && city.toLowerCase() != 'all' && city.toLowerCase() != 'all areas') {
@@ -62,17 +79,30 @@ class DoctorsRepository {
 
       if (doctors.isEmpty) return const [];
 
-      // Enrich doctors with detail (categories with fees & service locations)
-      final enrichedDoctors = await Future.wait(doctors.map((d) async {
-        if (_detailCache.containsKey(d.slug)) {
-          return _detailCache[d.slug]!;
-        }
-        try {
-          return await getDoctorDetail(d.slug);
-        } catch (_) {
-          return d;
-        }
-      }));
+      if (isUnfiltered) {
+        _cachedAllDoctors = doctors;
+        _lastFetchTime = DateTime.now();
+      }
+
+      // Only perform deep detail enrichment if filtering requires sub-properties
+      // (service locations or custom category fee options). Avoids firing 10+ concurrent
+      // HTTP requests during initial app startup / Home screen rendering.
+      final needsDeepEnrichment = (category != null && category.isNotEmpty && category != 'all') ||
+          (symptom != null && symptom.isNotEmpty) ||
+          (area != null && area.isNotEmpty && area.toLowerCase() != 'all' && area.toLowerCase() != 'all areas');
+
+      final enrichedDoctors = needsDeepEnrichment
+          ? await Future.wait(doctors.map((d) async {
+              if (_detailCache.containsKey(d.slug)) {
+                return _detailCache[d.slug]!;
+              }
+              try {
+                return await getDoctorDetail(d.slug);
+              } catch (_) {
+                return d;
+              }
+            }))
+          : doctors;
 
       var result = enrichedDoctors;
 

@@ -11,14 +11,21 @@ final homeRepositoryProvider = Provider<HomeRepository>((ref) {
 
 class HomeRepository {
   final ApiClient _apiClient;
+  MasterLocationsModel? _cachedLocations;
+  List<CategoryModel>? _cachedCategories;
+  List<SymptomModel>? _cachedSymptomsFeatured;
+  List<SymptomModel>? _cachedSymptomsAll;
 
   HomeRepository(this._apiClient);
 
   /// Fetch Master Locations (Cities and Areas)
   Future<MasterLocationsModel> getLocations() async {
+    if (_cachedLocations != null) return _cachedLocations!;
     try {
       final response = await _apiClient.get('/doctors/locations/master');
-      return MasterLocationsModel.fromJson(response.data as Map<String, dynamic>);
+      final model = MasterLocationsModel.fromJson(response.data as Map<String, dynamic>);
+      _cachedLocations = model;
+      return model;
     } catch (_) {
       return const MasterLocationsModel(
         cities: [
@@ -34,11 +41,16 @@ class HomeRepository {
 
   /// Fetch Clinical Specialties / Categories
   Future<List<CategoryModel>> getCategories() async {
+    if (_cachedCategories != null && _cachedCategories!.isNotEmpty) {
+      return _cachedCategories!;
+    }
     try {
       final response = await _apiClient.get('/categories');
       final list = response.data['categories'] as List<dynamic>? ?? [];
       if (list.isNotEmpty) {
-        return list.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>)).toList();
+        final categories = list.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>)).toList();
+        _cachedCategories = categories;
+        return categories;
       }
     } catch (_) {}
 
@@ -134,11 +146,18 @@ class HomeRepository {
   /// 7. Stroke
   /// 8. Traumatic Brain Injury
   Future<List<SymptomModel>> getSymptoms({bool featuredOnly = true}) async {
+    if (featuredOnly && _cachedSymptomsFeatured != null && _cachedSymptomsFeatured!.isNotEmpty) {
+      return _cachedSymptomsFeatured!;
+    }
+    if (!featuredOnly && _cachedSymptomsAll != null && _cachedSymptomsAll!.isNotEmpty) {
+      return _cachedSymptomsAll!;
+    }
     try {
       final response = await _apiClient.get('/symptoms');
       final list = response.data['symptoms'] as List<dynamic>? ?? [];
       if (list.isNotEmpty) {
         final allModels = list.map((s) => SymptomModel.fromJson(s as Map<String, dynamic>)).toList();
+        _cachedSymptomsAll = allModels;
         if (featuredOnly) {
           final Map<String, SymptomModel> bySlug = {for (final m in allModels) m.slug: m};
           final featured = <SymptomModel>[];
@@ -147,7 +166,10 @@ class HomeRepository {
               featured.add(bySlug[slug]!);
             }
           }
-          if (featured.isNotEmpty) return featured;
+          if (featured.isNotEmpty) {
+            _cachedSymptomsFeatured = featured;
+            return featured;
+          }
         } else {
           return allModels;
         }

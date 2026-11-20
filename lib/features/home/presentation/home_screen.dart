@@ -136,6 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         Image.asset(
                           'assets/images/pp_monogram.png',
                           height: 32,
+                          cacheHeight: 64,
                           fit: BoxFit.contain,
                         ),
                         const SizedBox(width: 8),
@@ -421,6 +422,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         child: Image.asset(
                           'assets/images/hero_doctor.png',
+                          cacheWidth: 360,
+                          cacheHeight: 390,
                           fit: BoxFit.contain,
                           alignment: Alignment.bottomRight,
                         ),
@@ -497,6 +500,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: upcomingAppointment.doctor.photo != null && upcomingAppointment.doctor.photo!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: upcomingAppointment.doctor.photo!,
+                                    memCacheWidth: 156,
+                                    memCacheHeight: 156,
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(color: Colors.white24),
                                     errorWidget: (context, url, error) => const Icon(LucideIcons.user, color: Colors.white),
@@ -693,55 +698,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // Categories Horizontal List (7 Specialties)
-              SizedBox(
-                height: 98,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    _CategoryTile(
-                      name: 'Orthopedic',
-                      iconAsset: 'assets/images/cat_orthopedic.png',
-                      onTap: () => context.push('/categories/orthopedic'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: 'Sport injury',
-                      iconAsset: 'assets/images/cat_sport_injury.png',
-                      onTap: () => context.push('/categories/sports-injury'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: 'Neurological',
-                      iconAsset: 'assets/images/cat_neurological.png',
-                      onTap: () => context.push('/categories/neurological'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: 'Pediatric',
-                      iconAsset: 'assets/images/cat_pediatric.png',
-                      onTap: () => context.push('/categories/pediatrics'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: 'Cardiac',
-                      iconAsset: 'assets/images/cat_cardiac.png',
-                      onTap: () => context.push('/categories/cardio-pulmonary'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: 'Geriatric',
-                      iconAsset: 'assets/images/cat_geriatric.png',
-                      onTap: () => context.push('/categories/geriatric'),
-                    ),
-                    const SizedBox(width: 14),
-                    _CategoryTile(
-                      name: "Women's Health",
-                      iconAsset: 'assets/images/cat_womens_health.png',
-                      onTap: () => context.push('/categories/womens-health'),
-                    ),
-                  ],
+              RepaintBoundary(
+                child: SizedBox(
+                  height: 98,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: [
+                      _CategoryTile(
+                        name: 'Orthopedic',
+                        iconAsset: 'assets/images/cat_orthopedic.png',
+                        onTap: () => context.push('/categories/orthopedic'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: 'Sport injury',
+                        iconAsset: 'assets/images/cat_sport_injury.png',
+                        onTap: () => context.push('/categories/sports-injury'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: 'Neurological',
+                        iconAsset: 'assets/images/cat_neurological.png',
+                        onTap: () => context.push('/categories/neurological'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: 'Pediatric',
+                        iconAsset: 'assets/images/cat_pediatric.png',
+                        onTap: () => context.push('/categories/pediatrics'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: 'Cardiac',
+                        iconAsset: 'assets/images/cat_cardiac.png',
+                        onTap: () => context.push('/categories/cardio-pulmonary'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: 'Geriatric',
+                        iconAsset: 'assets/images/cat_geriatric.png',
+                        onTap: () => context.push('/categories/geriatric'),
+                      ),
+                      const SizedBox(width: 14),
+                      _CategoryTile(
+                        name: "Women's Health",
+                        iconAsset: 'assets/images/cat_womens_health.png',
+                        onTap: () => context.push('/categories/womens-health'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -778,34 +785,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // Symptoms Horizontal List (Same UI as Categories Section)
-              symptomsAsync.when(
-                data: (symptoms) {
-                  if (symptoms.isEmpty) return const SizedBox.shrink();
+              RepaintBoundary(
+                child: symptomsAsync.when(
+                  data: (symptoms) {
+                    if (symptoms.isEmpty) return const SizedBox.shrink();
 
-                  return SizedBox(
-                    height: 94,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: symptoms.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final sym = symptoms[index];
-                        return _SymptomTile(
-                          name: sym.title,
-                          imageUrl: sym.image,
-                          onTap: () {
-                            ref.read(doctorFilterProvider.notifier).update((s) => s.copyWith(symptom: sym.title));
-                            context.push('/doctors');
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
-                loading: () => const SizedBox(height: 98),
-                error: (error, stack) => const SizedBox.shrink(),
+                    return SizedBox(
+                      height: 94,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: symptoms.length,
+                        separatorBuilder: (context, index) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final sym = symptoms[index];
+                          return _SymptomTile(
+                            name: sym.title,
+                            imageUrl: sym.image,
+                            onTap: () {
+                              ref.read(doctorFilterProvider.notifier).update((s) => s.copyWith(symptom: sym.title));
+                              context.push('/doctors');
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox(height: 98),
+                  error: (error, stack) => const SizedBox.shrink(),
+                ),
               ),
 
               // ==========================================
@@ -841,30 +850,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
               // Real Doctor Data from Doctors Repository / API
-              doctorsAsync.when(
-                data: (doctors) {
-                  if (doctors.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: Text(
-                        'No doctors currently available.',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                      ),
+              RepaintBoundary(
+                child: doctorsAsync.when(
+                  data: (doctors) {
+                    if (doctors.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Text(
+                          'No doctors currently available.',
+                          style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                        ),
+                      );
+                    }
+                    // Render top real doctors using DoctorCard
+                    final displayDoctors = doctors.take(3).toList();
+                    return Column(
+                      children: displayDoctors.map((doc) => DoctorCard(doctor: doc)).toList(),
                     );
-                  }
-                  // Render top real doctors using DoctorCard
-                  final displayDoctors = doctors.take(3).toList();
-                  return Column(
-                    children: displayDoctors.map((doc) => DoctorCard(doctor: doc)).toList(),
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0891B2)),
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Color(0xFF0891B2)),
+                    ),
                   ),
+                  error: (error, stack) => const SizedBox.shrink(),
                 ),
-                error: (error, stack) => const SizedBox.shrink(),
               ),
 
               const SizedBox(height: 24),
@@ -918,6 +929,8 @@ class _CategoryTile extends StatelessWidget {
                     iconAsset,
                     width: 36,
                     height: 36,
+                    cacheWidth: 72,
+                    cacheHeight: 72,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -960,6 +973,8 @@ class _SymptomTile extends StatelessWidget {
           imageUrl: imageUrl!,
           width: 40,
           height: 40,
+          memCacheWidth: 120,
+          memCacheHeight: 120,
           fit: BoxFit.cover,
           placeholder: (context, url) => _fallbackIcon(),
           errorWidget: (context, error, stackTrace) => _fallbackIcon(),

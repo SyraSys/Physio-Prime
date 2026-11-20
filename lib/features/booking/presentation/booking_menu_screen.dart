@@ -114,6 +114,7 @@ class _BookingMenuScreenState extends ConsumerState<BookingMenuScreen>
                           Image.asset(
                             'assets/images/pp_monogram.png',
                             height: 32,
+                            cacheHeight: 64,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Container(
                               width: 32,

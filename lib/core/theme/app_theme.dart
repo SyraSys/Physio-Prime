@@ -35,7 +35,11 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get lightTheme {
+  /// Cached static theme instance. Constructed once on initial access, avoiding
+  /// re-allocating ThemeData, ColorScheme, and dozens of GoogleFonts TextStyles on every build.
+  static final ThemeData lightTheme = _buildLightTheme();
+
+  static ThemeData _buildLightTheme() {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
