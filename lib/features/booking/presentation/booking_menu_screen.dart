@@ -108,84 +108,96 @@ class _BookingMenuScreenState extends ConsumerState<BookingMenuScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Brand Logo + Location Cluster (Matches DESIGN.md 3.1)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/images/pp_monogram.png',
-                            height: 32,
-                            cacheHeight: 64,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 32,
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/pp_monogram.png',
                               height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE0F7FA),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(LucideIcons.activity, size: 18, color: Color(0xFF0891B2)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              RichText(
-                                text: TextSpan(
-                                  text: 'Physio',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF0F172A),
-                                    letterSpacing: -0.3,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: 'Prime',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: const Color(0xFF0891B2),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
+                              cacheHeight: 64,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F7FA),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
+                                child: const Icon(LucideIcons.activity, size: 18, color: Color(0xFF0891B2)),
                               ),
-                              const SizedBox(height: 1),
-                              Row(
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    LucideIcons.mapPin,
-                                    size: 11,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    selectedCity,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF475569),
+                                  RichText(
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      text: 'Physio',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF0F172A),
+                                        letterSpacing: -0.3,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: 'Prime',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: const Color(0xFF0891B2),
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: 2),
-                                  const Icon(
-                                    LucideIcons.chevronDown,
-                                    size: 11,
-                                    color: Color(0xFF64748B),
+                                  const SizedBox(height: 1),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.mapPin,
+                                        size: 11,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          selectedCity,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      const Icon(
+                                        LucideIcons.chevronDown,
+                                        size: 11,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
 
                       // My Bookings Button (Clean elevated pill)
                       FluidPressable(
                         onTap: () => context.push('/appointments'),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -202,11 +214,11 @@ class _BookingMenuScreenState extends ConsumerState<BookingMenuScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(LucideIcons.calendar, size: 14, color: Color(0xFF0891B2)),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 4),
                               Text(
                                 'My Bookings',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF0891B2),
                                 ),
