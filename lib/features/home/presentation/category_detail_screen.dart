@@ -267,7 +267,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                       children: [
                         if (cat?.image != null && cat!.image!.isNotEmpty)
                           CachedNetworkImage(
-                            imageUrl: cat!.image!,
+                            imageUrl: cat.image!,
                             height: 160,
                             width: double.infinity,
                             fit: BoxFit.cover,
