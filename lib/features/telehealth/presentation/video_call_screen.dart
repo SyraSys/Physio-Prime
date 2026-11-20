@@ -246,8 +246,8 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
               : 'The call ended, but we could not update the session status: $_finalizeError',
           primaryLabel: _finalizeError == null ? 'Back to appointments' : 'Retry',
           onPrimary: _finalizeError == null ? () => context.go('/appointments') : _finalize,
-          secondaryLabel: _finalizeError == null ? 'Go to dashboard' : 'Back to appointments',
-          onSecondary: () => context.go(_finalizeError == null ? '/dashboard' : '/appointments'),
+          secondaryLabel: _finalizeError == null ? 'Go to history' : 'Back to appointments',
+          onSecondary: () => context.go(_finalizeError == null ? '/history' : '/appointments'),
         );
       case _CallPhase.error:
         final error = _error;
