@@ -283,120 +283,144 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // ==========================================
               // 3. HERO BANNER CARD
               // ==========================================
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                height: 195,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBF8FA),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFDEF4F7)),
-                ),
-                child: Stack(
-                  children: [
-                    // Left Text & CTA Action
-                    Positioned(
-                      left: 20,
-                      top: 18,
-                      bottom: 18,
-                      width: 225,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: const TextSpan(
-                              text: 'Book Prime\nPhysiotherapist for\n',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                                height: 1.25,
-                                letterSpacing: -0.3,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: 'Back and Neck Pain.',
-                                  style: TextStyle(
-                                    color: Color(0xFF0891B2),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Connect with certified experts\nfor expert care.',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFF64748B),
-                              height: 1.35,
-                            ),
-                          ),
-                          const Spacer(),
-                          InkWell(
-                            onTap: () => context.go('/doctors'),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF0D9488), Color(0xFF0891B2)],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x330D9488),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
+              Builder(
+                builder: (context) {
+                  final screenWidth = MediaQuery.sizeOf(context).width;
+                  final isCompact = screenWidth < 380;
+                  final rightOffset = isCompact ? 116.0 : 138.0;
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    height: isCompact ? 212 : 205,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF8FA),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFDEF4F7)),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Left Text & CTA Action
+                        Positioned(
+                          left: isCompact ? 14 : 18,
+                          top: isCompact ? 14 : 16,
+                          bottom: isCompact ? 14 : 16,
+                          right: rightOffset,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Text(
-                                    'Book Appointment',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                                children: [
+                                  RichText(
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      text: 'Book Prime\nPhysiotherapist for\n',
+                                      style: TextStyle(
+                                        fontSize: isCompact ? 15 : 17,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF0F172A),
+                                        height: 1.2,
+                                        letterSpacing: -0.3,
+                                      ),
+                                      children: const [
+                                        TextSpan(
+                                          text: 'Back and Neck Pain.',
+                                          style: TextStyle(
+                                            color: Color(0xFF0891B2),
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  SizedBox(width: 4),
-                                  Icon(
-                                    LucideIcons.arrowRight,
-                                    size: 14,
-                                    color: Colors.white,
+                                  SizedBox(height: isCompact ? 4 : 6),
+                                  Text(
+                                    'Connect with certified experts for expert care.',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: isCompact ? 11 : 11.5,
+                                      color: const Color(0xFF64748B),
+                                      height: 1.3,
+                                    ),
                                   ),
                                 ],
                               ),
+                              InkWell(
+                                onTap: () => context.go('/doctors'),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isCompact ? 11 : 13,
+                                    vertical: isCompact ? 7 : 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF0D9488), Color(0xFF0891B2)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x330D9488),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Book Appointment',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: isCompact ? 11.5 : 12,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          LucideIcons.arrowRight,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Right 3D Character Illustration
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          top: 0,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(24),
+                              bottomRight: Radius.circular(24),
+                            ),
+                            child: Image.asset(
+                              'assets/images/hero_doctor.png',
+                              cacheWidth: 360,
+                              cacheHeight: 390,
+                              fit: BoxFit.contain,
+                              alignment: Alignment.bottomRight,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // Right 3D Character Illustration
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      top: 0,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(24),
-                          bottomRight: Radius.circular(24),
                         ),
-                        child: Image.asset(
-                          'assets/images/hero_doctor.png',
-                          cacheWidth: 360,
-                          cacheHeight: 390,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.bottomRight,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               // ==========================================
@@ -407,15 +431,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      upcomingAppointment != null ? 'Upcoming Appointment' : 'Book a Session',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                    Expanded(
+                      child: Text(
+                        upcomingAppointment != null ? 'Upcoming Appointment' : 'Book a Session',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.go('/bookings'),
                       child: Text(
@@ -639,15 +666,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'All Categories',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                    const Expanded(
+                      child: Text(
+                        'All Categories',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.go('/doctors'),
                       child: const Text(
@@ -726,15 +756,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Find Specialist By Symptoms',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                    const Expanded(
+                      child: Text(
+                        'Find Specialist By Symptoms',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.push('/conditions'),
                       child: const Text(
@@ -791,15 +824,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Best Doctors',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                    const Expanded(
+                      child: Text(
+                        'Best Doctors',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.push('/doctors'),
                       child: const Text(
