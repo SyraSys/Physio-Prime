@@ -70,7 +70,7 @@ class HomeRepository {
         title: 'Sports Injury Doctor',
         slug: 'sports-injury',
         description: 'High-performance sports medicine, kinesio taping, dry needling, and explosive return-to-play conditioning.',
-        doctorCount: 0,
+        doctorCount: 3,
         conditions: ['ACL Tear', 'Rotator Cuff Injury'],
         image: 'https://usrgvhubmbnyvxocjpga.supabase.co/storage/v1/object/public/media/categories/1793264324560-6ch54c.webp',
       ),
