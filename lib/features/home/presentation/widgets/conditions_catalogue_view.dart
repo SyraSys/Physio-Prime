@@ -161,14 +161,14 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
         // =====================================================================
         // 2. SEARCH RESULTS VIEW (When query is active)
         // =====================================================================
         if (isSearching) ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
                 Text(
@@ -209,7 +209,7 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
           for (int i = 0; i < ConditionsCatalogue.allCategories.length; i++) ...[
             _buildCategorySection(ConditionsCatalogue.allCategories[i]),
             if (i < ConditionsCatalogue.allCategories.length - 1)
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
           ],
         ],
       ],
@@ -229,7 +229,7 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
               child: Text(
                 category.title,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F172A),
                   letterSpacing: -0.2,
@@ -240,14 +240,14 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
             FluidPressable(
               onTap: () => _handleViewSpecialty(category.specialtySlug),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'View specialty',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF0891B2),
                       ),
@@ -255,7 +255,7 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
                     const SizedBox(width: 3),
                     const Icon(
                       LucideIcons.arrowRight,
-                      size: 13,
+                      size: 12,
                       color: Color(0xFF0891B2),
                     ),
                   ],
@@ -264,7 +264,7 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // Grid of Condition Cards: Title + Chevron only
         _buildResponsiveConditionGrid(category.conditions),
@@ -279,7 +279,7 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
         final int crossAxisCount;
         if (width >= 620) {
           crossAxisCount = 3;
-        } else if (width >= 350) {
+        } else if (width >= 330) {
           crossAxisCount = 2;
         } else {
           crossAxisCount = 1;
@@ -287,13 +287,14 @@ class _ConditionsCatalogueViewState extends ConsumerState<ConditionsCatalogueVie
 
         return GridView.builder(
           shrinkWrap: true,
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: conditions.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            mainAxisExtent: 58,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 8,
+            mainAxisExtent: 46,
           ),
           itemBuilder: (context, index) {
             final cond = conditions[index];
@@ -386,10 +387,10 @@ class ConditionCard extends StatelessWidget {
     return FluidPressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
           boxShadow: const [
             BoxShadow(

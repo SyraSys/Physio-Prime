@@ -749,7 +749,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // 6. FIND SPECIALIST BY SYMPTOMS SECTION
               // ==========================================
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -783,13 +783,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   if (symptoms.isEmpty) return const SizedBox.shrink();
 
                   return SizedBox(
-                    height: 98,
+                    height: 94,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: symptoms.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 14),
+                      separatorBuilder: (context, index) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final sym = symptoms[index];
                         return _SymptomTile(
@@ -812,7 +812,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // 7. BEST DOCTORS SECTION
               // ==========================================
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -991,7 +991,7 @@ class _SymptomTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(30),
       child: SizedBox(
-        width: 76,
+        width: 66,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
