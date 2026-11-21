@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -20,9 +22,65 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>physioprime</string>
+				<string>in.physioprime.app</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>credpay</string>
+		<string>bhim</string>
+		<string>upi</string>
+		<string>mobikwik</string>
+		<string>in.fampay.app</string>
+		<string>amazonpay</string>
+		<string>myairtel</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>PhysioPrime requires camera access to allow HD video consultations with your physiotherapist.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PhysioPrime requires your location to suggest your service area and accurately dispatch home visit physiotherapists.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PhysioPrime requires microphone access for audio during video consultations.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -41,51 +99,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-
-	<!-- Teleconsultation Video Permissions (JaaS / Jitsi) -->
-	<key>NSCameraUsageDescription</key>
-	<string>PhysioPrime requires camera access to allow HD video consultations with your physiotherapist.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>PhysioPrime requires microphone access for audio during video consultations.</string>
-
-	<!-- Geolocation for Home Visit Address Auto-Detection -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PhysioPrime requires your location to suggest your service area and accurately dispatch home visit physiotherapists.</string>
-
-	<!-- Razorpay: allow UPI intent hand-off to installed UPI apps -->
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>tez</string>
-		<string>phonepe</string>
-		<string>paytmmp</string>
-		<string>credpay</string>
-		<string>bhim</string>
-		<string>upi</string>
-		<string>mobikwik</string>
-		<string>in.fampay.app</string>
-		<string>amazonpay</string>
-		<string>myairtel</string>
-	</array>
-
-	<!-- Deep Linking / Supabase Auth Redirects -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>physioprime</string>
-				<string>in.physioprime.app</string>
-			</array>
-		</dict>
-	</array>
-	<!-- Export Compliance (Exempt from US export documentation) -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 </dict>
 </plist>
