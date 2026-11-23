@@ -46,6 +46,7 @@ app.*.map.json
 
 *.md
 APP_STORE_DEPLOYMENT_GUIDE.md
+CLIENT_RUN_GUIDE.md
 # Local backups
 *.bak
 devtools_options.yaml
