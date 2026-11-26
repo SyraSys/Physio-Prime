@@ -9,6 +9,7 @@ import '../../../core/utils/ist_time.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/frosted_glass.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/widgets/skeleton_loading.dart';
 import '../../booking/domain/booking_request_model.dart';
 import '../../booking/presentation/widgets/slot_picker_widgets.dart';
 import '../domain/appointment_model.dart';
@@ -43,12 +44,15 @@ class AppointmentDetailScreen extends ConsumerWidget {
         title: const Text('Appointment Details'),
       ),
       body: appointment == null
-          ? Padding(
-              padding: EdgeInsets.only(top: topPadding),
-              child: listState.when(
-                loading: () => const LoadingView(message: 'Loading appointment…'),
-                error: (e, _) => ErrorView(error: e, onRetry: () => ref.invalidate(appointmentsProvider)),
-                data: (_) => const EmptyStateView(
+          ? listState.when(
+              loading: () => const AppointmentDetailSkeletonScreen(),
+              error: (e, _) => Padding(
+                padding: EdgeInsets.only(top: topPadding),
+                child: ErrorView(error: e, onRetry: () => ref.invalidate(appointmentsProvider)),
+              ),
+              data: (_) => Padding(
+                padding: EdgeInsets.only(top: topPadding),
+                child: const EmptyStateView(
                   icon: LucideIcons.calendarX,
                   title: 'Appointment not found',
                   message: 'This appointment is no longer available on your account.',
@@ -139,12 +143,6 @@ class _DetailBody extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (a.doctor.slug != null)
-                IconButton(
-                  tooltip: 'View profile',
-                  onPressed: () => context.push('/doctor/${a.doctor.slug}'),
-                  icon: const Icon(LucideIcons.chevronRight, color: AppColors.primary),
-                ),
             ],
           ),
         ),
@@ -331,9 +329,9 @@ class _DetailBody extends ConsumerWidget {
     if (a.isCancelled) {
       add(
         PrimaryActionButton(
-          label: 'Book again',
+          label: 'Book an appointment',
           icon: LucideIcons.calendarCheck,
-          onPressed: () => a.doctor.slug != null ? context.push('/doctor/${a.doctor.slug}') : context.go('/doctors'),
+          onPressed: () => context.go('/doctors'),
         ),
       );
     }

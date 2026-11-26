@@ -143,10 +143,10 @@ class AuthRepository {
         fullName: meta['fullName'] ?? meta['name'] ?? meta['full_name'],
         phone: supaUser?.phone ?? meta['phone'],
         gender: meta['gender']?.toString(),
-        dateOfBirth: meta['dateOfBirth']?.toString() ?? meta['date_of_birth']?.toString() ?? meta['dob']?.toString(),
+        dateOfBirth: meta['dob']?.toString() ?? meta['dateOfBirth']?.toString() ?? meta['date_of_birth']?.toString(),
         weight: meta['weight']?.toString(),
         height: meta['height']?.toString(),
-        address: meta['address']?.toString(),
+        address: UserModel.parseAddress(meta['address']),
       );
     }
   }
@@ -162,17 +162,32 @@ class AuthRepository {
     String? address,
   }) async {
     final payload = <String, dynamic>{};
-    if (fullName != null) payload['fullName'] = fullName;
+    if (fullName != null) {
+      payload['name'] = fullName;
+      payload['fullName'] = fullName;
+    }
     if (phone != null) payload['phone'] = phone;
-    if (gender != null) payload['gender'] = gender;
-    if (dateOfBirth != null) payload['dateOfBirth'] = dateOfBirth;
+    if (gender != null) {
+      payload['gender'] = gender.toLowerCase();
+    }
+    if (dateOfBirth != null) {
+      final iso = UserModel.toIsoDate(dateOfBirth) ?? dateOfBirth;
+      payload['dob'] = iso;
+      payload['dateOfBirth'] = iso;
+      payload['date_of_birth'] = iso;
+    }
     if (weight != null) payload['weight'] = weight;
     if (height != null) payload['height'] = height;
-    if (address != null) payload['address'] = address;
+    if (address != null) {
+      payload['address'] = {'text': address};
+    }
 
     try {
       final res = await _apiClient.patch('/auth/me', data: payload);
-      final userData = res.data['user'] as Map<String, dynamic>;
+      final userRaw = res.data is Map ? (res.data['user'] ?? res.data) : res.data;
+      final Map<String, dynamic> userData = userRaw is Map<String, dynamic>
+          ? userRaw
+          : Map<String, dynamic>.from(userRaw as Map);
       return UserModel.fromJson(userData);
     } catch (_) {
       // Fallback to update Supabase user metadata directly
@@ -187,10 +202,10 @@ class AuthRepository {
           fullName: currentMeta['fullName'] ?? currentMeta['name'] ?? currentMeta['full_name'],
           phone: phone ?? supa.phone,
           gender: currentMeta['gender']?.toString(),
-          dateOfBirth: currentMeta['dateOfBirth']?.toString() ?? currentMeta['date_of_birth']?.toString(),
+          dateOfBirth: currentMeta['dob']?.toString() ?? currentMeta['dateOfBirth']?.toString() ?? currentMeta['date_of_birth']?.toString(),
           weight: currentMeta['weight']?.toString(),
           height: currentMeta['height']?.toString(),
-          address: currentMeta['address']?.toString(),
+          address: UserModel.parseAddress(currentMeta['address']),
         );
       }
       rethrow;

@@ -9,7 +9,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/ist_time.dart';
 import '../../../core/widgets/fluid_pressable.dart';
+import '../../../core/widgets/skeleton_loading.dart';
+import '../../booking/domain/slot_model.dart';
+import '../../booking/providers/booking_provider.dart';
 import '../domain/doctor_model.dart';
 import '../domain/review_model.dart';
 import '../providers/doctors_provider.dart';
@@ -38,19 +42,45 @@ class DoctorDetailScreen extends ConsumerStatefulWidget {
 class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   int _selectedTabIndex = 1; // Default to 'Book Appointment' matching reference screenshot
   int _selectedDateIndex = 1; // Default to second date (e.g. 23 Sun) matching screenshot
-  String _selectedTimeSlot = '10:00 AM';
   String _selectedMode = 'home';
   DoctorCategoryOption? _selectedCategoryOption;
+  SlotModel? _selectedSlotModel;
 
-  final List<String> _timeSlots = const [
-    '09:00 AM',
-    '10:00 AM',
-    '11:30 AM',
-    '02:00 PM',
-    '03:30 PM',
-    '05:00 PM',
-    '06:30 PM',
+  static const List<SlotModel> _fallbackWindows = [
+    SlotModel(
+      slot: '7:00 AM - 9:00 AM',
+      label: 'Early Morning',
+      available: true,
+      maxPatients: 3,
+    ),
+    SlotModel(
+      slot: '9:00 AM - 12:00 PM',
+      label: 'Morning',
+      available: true,
+      maxPatients: 3,
+    ),
+    SlotModel(
+      slot: '3:00 PM - 6:00 PM',
+      label: 'Evening',
+      available: true,
+      maxPatients: 3,
+    ),
+    SlotModel(
+      slot: '6:00 PM - 9:00 PM',
+      label: 'Night',
+      available: true,
+      maxPatients: 3,
+    ),
   ];
+
+  IconData _getTimeWindowIcon(String label) {
+    final lower = label.toLowerCase();
+    if (lower.contains('early')) return LucideIcons.sunrise;
+    if (lower.contains('morning')) return LucideIcons.sun;
+    if (lower.contains('afternoon')) return LucideIcons.sunMedium;
+    if (lower.contains('evening')) return LucideIcons.sunset;
+    return LucideIcons.moon;
+  }
 
   late final List<DateTime> _upcomingDates;
 
@@ -158,6 +188,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
 
   void _proceedToBooking(DoctorModel doc) {
     final selectedDate = _upcomingDates[_selectedDateIndex];
+    final selectedSlot = _selectedSlotModel ?? _fallbackWindows.first;
     final activeHomeFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeHome : doc.fees.home;
     final activeOnlineFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeOnline : doc.fees.online;
     final activeFee = _selectedMode == 'home' ? activeHomeFee : activeOnlineFee;
@@ -177,7 +208,10 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
         'feePaise': (activeFee * 100).toInt(),
         'homeVisitsEnabled': doc.homeVisitsEnabled,
         'selectedDate': selectedDate.toIso8601String(),
-        'selectedTime': _selectedTimeSlot,
+        'selectedTime': selectedSlot.displayTitle,
+        'selectedWindow': selectedSlot.displayTitle,
+        'slot': selectedSlot.slot,
+        'slotDisplayTime': selectedSlot.timeRange,
       },
     );
   }
@@ -186,7 +220,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(doctorDetailProvider(widget.slug));
     final reviewsAsync = ref.watch(doctorReviewsProvider(widget.slug));
-    final doc = widget.doctor ?? detailAsync.value;
+    final doc = widget.doctor ?? detailAsync.valueOrNull;
 
     if (doc != null && doc.categoryOptions.isNotEmpty) {
       if (_selectedCategoryOption == null ||
@@ -196,19 +230,97 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     }
 
     if (doc == null && detailAsync.isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
+      return const DoctorDetailSkeletonScreen();
     }
 
     if (doc == null) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(title: const Text('Doctor Profile')),
-        body: const Center(child: Text('Doctor profile could not be loaded.')),
+        backgroundColor: const Color(0xFFF8FAFB),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0F172A)),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/appointments');
+              }
+            },
+          ),
+          title: const Text(
+            'Doctor Profile',
+            style: TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.userX,
+                    size: 28,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Doctor Profile Unavailable',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This doctor profile is no longer available or was associated with an archived appointment.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0891B2),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/appointments');
+                    }
+                  },
+                  icon: const Icon(LucideIcons.arrowLeft, size: 16),
+                  label: const Text('Back to Appointments'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -451,7 +563,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 40),
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 80),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -675,6 +787,12 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
     final activeHomeFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeHome : doc.fees.home;
     final activeOnlineFee = _selectedCategoryOption != null ? _selectedCategoryOption!.feeOnline : doc.fees.online;
     final activeFee = _selectedMode == 'home' ? activeHomeFee : activeOnlineFee;
+    final selectedDate = _upcomingDates[_selectedDateIndex];
+    final slotQuery = SlotQuery(
+      doctorSlug: doc.slug,
+      date: IstTime.apiDate(selectedDate),
+    );
+    final slotsAsync = ref.watch(slotAvailabilityProvider(slotQuery));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,7 +883,12 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
               return Padding(
                 padding: const EdgeInsets.only(right: 10),
                 child: FluidPressable(
-                  onTap: () => setState(() => _selectedDateIndex = index),
+                  onTap: () {
+                    setState(() {
+                      _selectedDateIndex = index;
+                      _selectedSlotModel = null;
+                    });
+                  },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     width: 62,
@@ -817,44 +940,32 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
         ),
         const SizedBox(height: 24),
 
-        // 4. Time Slots Section
+        // 4. Time Window Section (Live from GET /doctors/:slug/slots?date=YYYY-MM-DD)
         Text(
-          'Select Time Slot',
+          'Select Time Window',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF0F172A),
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: _timeSlots.map((slot) {
-            final isSelected = _selectedTimeSlot == slot;
-            return FluidPressable(
-              onTap: () => setState(() => _selectedTimeSlot = slot),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: Text(
-                  slot,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: isSelected ? Colors.white : const Color(0xFF0F172A),
-                  ),
-                ),
+        const SizedBox(height: 14),
+        slotsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
               ),
-            );
-          }).toList(),
+            ),
+          ),
+          error: (_, _) => _buildTimeWindowsList(_fallbackWindows),
+          data: (availability) {
+            final windows = availability.windows.isNotEmpty ? availability.windows : _fallbackWindows;
+            return _buildTimeWindowsList(windows);
+          },
         ),
         const SizedBox(height: 24),
 
@@ -914,6 +1025,115 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTimeWindowsList(List<SlotModel> windows) {
+    if (_selectedSlotModel == null && windows.isNotEmpty) {
+      _selectedSlotModel = windows.firstWhere((w) => w.available, orElse: () => windows.first);
+    }
+
+    return Column(
+      children: windows.map((slot) {
+        final isSelected = _selectedSlotModel != null &&
+            (_selectedSlotModel!.slot == slot.slot ||
+             (_selectedSlotModel!.label != null && _selectedSlotModel!.label == slot.label));
+        final icon = _getTimeWindowIcon(slot.label ?? slot.slot);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: FluidPressable(
+            onTap: slot.available
+                ? () {
+                    setState(() {
+                      _selectedSlotModel = slot;
+                    });
+                  }
+                : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0),
+                  width: isSelected ? 1.5 : 1,
+                ),
+                boxShadow: isSelected
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x140891B2),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Opacity(
+                opacity: slot.available ? 1.0 : 0.5,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 20,
+                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            slot.displayTitle,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? const Color(0xFF0891B2) : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            slot.timeRange,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF0891B2) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        slot.available ? '${slot.availableSpots} spots' : 'Full',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

@@ -1488,12 +1488,6 @@ class _BookingWizardScreenState extends ConsumerState<BookingWizardScreen> {
                       maxPatients: 3,
                     ),
                     const SlotModel(
-                      slot: '12:00 PM - 3:00 PM',
-                      label: 'Afternoon',
-                      available: true,
-                      maxPatients: 3,
-                    ),
-                    const SlotModel(
                       slot: '3:00 PM - 6:00 PM',
                       label: 'Evening',
                       available: true,

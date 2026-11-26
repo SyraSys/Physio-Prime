@@ -50,10 +50,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
                     meta['full_name'],
                 phone: supaUser.phone ?? meta['phone'],
                 gender: meta['gender']?.toString(),
-                dateOfBirth: meta['dateOfBirth']?.toString() ?? meta['date_of_birth']?.toString(),
+                dateOfBirth: meta['dob']?.toString() ?? meta['dateOfBirth']?.toString() ?? meta['date_of_birth']?.toString(),
                 weight: meta['weight']?.toString(),
                 height: meta['height']?.toString(),
-                address: meta['address']?.toString(),
+                address: UserModel.parseAddress(meta['address']),
               ),
             );
           } else {

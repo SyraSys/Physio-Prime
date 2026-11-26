@@ -53,18 +53,119 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
+  static DateTime? _parseDob(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    final clean = text.trim();
+    if (clean.contains('/') || clean.contains('-')) {
+      final delimiter = clean.contains('/') ? '/' : '-';
+      final parts = clean.split(delimiter);
+      if (parts.length == 3) {
+        if (parts[0].length == 4) {
+          final y = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final d = int.tryParse(parts[2]);
+          if (y != null && m != null && d != null) {
+            return DateTime(y, m, d);
+          }
+        } else {
+          final d = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final y = int.tryParse(parts[2]);
+          if (y != null && m != null && d != null) {
+            return DateTime(y, m, d);
+          }
+        }
+      }
+    }
+    return DateTime.tryParse(clean);
+  }
+
+  static String _formatDob(DateTime dt) {
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final y = dt.year.toString();
+    return '$d/$m/$y';
+  }
+
+  Future<void> _selectDateOfBirth(
+    BuildContext context,
+    TextEditingController controller,
+    void Function(void Function()) setSheetState,
+  ) async {
+    final now = DateTime.now();
+    final initial = _parseDob(controller.text) ?? DateTime(now.year - 25, now.month, now.day);
+    final safeInitial = initial.isAfter(now)
+        ? now
+        : (initial.isBefore(DateTime(1900)) ? DateTime(1900) : initial);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: safeInitial,
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'Select Date of Birth',
+      confirmText: 'SELECT',
+      cancelText: 'CANCEL',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF0F172A),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setSheetState(() {
+        controller.text = _formatDob(picked);
+      });
+    }
+  }
+
   void _showEditProfileSheet(BuildContext context, UserModel user) {
     final nameController = TextEditingController(text: user.fullName ?? '');
     final phoneController = TextEditingController(text: user.phone ?? '');
-    final genderController = TextEditingController(text: user.gender ?? '');
-    final dobController = TextEditingController(text: user.dateOfBirth ?? '');
+    String selectedGender = '';
+    if (user.gender != null && user.gender!.trim().isNotEmpty) {
+      final g = user.gender!.trim().toLowerCase();
+      if (g == 'male') {
+        selectedGender = 'Male';
+      } else if (g == 'female') {
+        selectedGender = 'Female';
+      } else if (g == 'other') {
+        selectedGender = 'Other';
+      } else {
+        selectedGender = user.gender!.trim();
+      }
+    }
+
+    final initialDob = user.dateOfBirth != null && user.dateOfBirth!.trim().isNotEmpty
+        ? (_parseDob(user.dateOfBirth) != null
+            ? _formatDob(_parseDob(user.dateOfBirth)!)
+            : user.dateOfBirth!.trim())
+        : '';
+    final dobController = TextEditingController(text: initialDob);
     final weightController = TextEditingController(text: user.weight ?? '');
     final heightController = TextEditingController(text: user.height ?? '');
-    final addressController = TextEditingController(text: user.address ?? '');
+    final addressController = TextEditingController(
+      text: UserModel.parseAddress(user.address) ?? user.address ?? '',
+    );
     bool isSaving = false;
 
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
@@ -87,11 +188,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.88,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                     // Handle Bar
                     Center(
                       child: Container(
@@ -150,39 +253,106 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Gender & Date of Birth
+                    // Gender Selection (Male, Female, Other)
+                    _buildInputLabel('Gender'),
+                    const SizedBox(height: 6),
                     Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInputLabel('Gender'),
-                              const SizedBox(height: 6),
-                              _buildTextField(
-                                controller: genderController,
-                                hint: 'Male / Female',
-                                icon: LucideIcons.user,
+                      children: ['Male', 'Female', 'Other'].map((option) {
+                        final isSelected = selectedGender.toLowerCase() == option.toLowerCase();
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: option != 'Other' ? 8.0 : 0.0,
+                            ),
+                            child: FluidPressable(
+                              onTap: () {
+                                setSheetState(() {
+                                  selectedGender = option;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFF0FDFA) : const Color(0xFFF8FAFB),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                                    width: isSelected ? 1.6 : 1,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? const [
+                                          BoxShadow(
+                                            color: Color(0x140891B2),
+                                            blurRadius: 8,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (isSelected) ...[
+                                      const Icon(LucideIcons.check, size: 14, color: AppColors.primary),
+                                      const SizedBox(width: 5),
+                                    ],
+                                    Text(
+                                      option,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13.5,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                        color: isSelected ? AppColors.primary : const Color(0xFF475569),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
+                            ),
                           ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Date of Birth (Interactive Calendar Selection)
+                    _buildInputLabel('Date of Birth'),
+                    const SizedBox(height: 6),
+                    FluidPressable(
+                      onTap: () => _selectDateOfBirth(context, dobController, setSheetState),
+                      child: Container(
+                        height: 50,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFB),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInputLabel('Date of Birth'),
-                              const SizedBox(height: 6),
-                              _buildTextField(
-                                controller: dobController,
-                                hint: 'DD/MM/YYYY',
-                                icon: LucideIcons.calendar,
+                        child: Row(
+                          children: [
+                            const Icon(LucideIcons.calendar, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                dobController.text.isNotEmpty ? dobController.text : 'DD/MM/YYYY',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: dobController.text.isNotEmpty ? FontWeight.w600 : FontWeight.w500,
+                                  color: dobController.text.isNotEmpty ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEBF8FA),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(LucideIcons.calendar, size: 15, color: AppColors.primary),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                     const SizedBox(height: 14),
 
@@ -256,11 +426,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       phone: phoneController.text.trim().isNotEmpty
                                           ? phoneController.text.trim()
                                           : null,
-                                      gender: genderController.text.trim().isNotEmpty
-                                          ? genderController.text.trim()
+                                      gender: selectedGender.trim().isNotEmpty
+                                          ? selectedGender.trim().toLowerCase()
                                           : null,
                                       dateOfBirth: dobController.text.trim().isNotEmpty
-                                          ? dobController.text.trim()
+                                          ? (UserModel.toIsoDate(dobController.text.trim()) ?? dobController.text.trim())
                                           : null,
                                       weight: weightController.text.trim().isNotEmpty
                                           ? weightController.text.trim()
@@ -304,9 +474,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-            );
-          },
-        );
+            ),
+          );
+        },
+      );
       },
     );
   }
@@ -824,13 +995,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  String _formatWeightHeight(String? weight, String? height) {
+    String cleanWeight = (weight ?? '').trim();
+    String cleanHeight = (height ?? '').trim();
+
+    if (cleanWeight.toLowerCase().endsWith('kg')) {
+      cleanWeight = cleanWeight.substring(0, cleanWeight.length - 2).trim();
+    }
+    if (cleanHeight.toLowerCase().endsWith('cm')) {
+      cleanHeight = cleanHeight.substring(0, cleanHeight.length - 2).trim();
+    }
+
+    final hasWeight = cleanWeight.isNotEmpty && cleanWeight != '—';
+    final hasHeight = cleanHeight.isNotEmpty && cleanHeight != '—';
+
+    if (hasWeight && hasHeight) {
+      return '$cleanWeight kg · $cleanHeight cm';
+    } else if (hasWeight) {
+      return '$cleanWeight kg';
+    } else if (hasHeight) {
+      return '$cleanHeight cm';
+    }
+    return '—';
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // 3. TAB 1: PERSONAL PROFILE ("Account Details")
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabPersonalProfile(UserModel user) {
-    final weightStr = user.weight?.isNotEmpty == true ? user.weight! : '—';
-    final heightStr = user.height?.isNotEmpty == true ? user.height! : '—';
-    final weightHeight = '$weightStr • $heightStr';
+    final genderVal = user.gender?.trim();
+    final displayGender = (genderVal != null && genderVal.isNotEmpty)
+        ? '${genderVal[0].toUpperCase()}${genderVal.substring(1).toLowerCase()}'
+        : '—';
+    final displayDob = UserModel.formatDob(user.dateOfBirth);
+    final weightHeight = _formatWeightHeight(user.weight, user.height);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -908,7 +1106,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Expanded(
                 child: _buildDetailCard(
                   label: 'Gender',
-                  value: user.gender?.isNotEmpty == true ? user.gender! : '—',
+                  value: displayGender,
                 ),
               ),
             ],
@@ -921,7 +1119,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Expanded(
                 child: _buildDetailCard(
                   label: 'Date of Birth',
-                  value: user.dateOfBirth?.isNotEmpty == true ? user.dateOfBirth! : '—',
+                  value: displayDob,
                 ),
               ),
               const SizedBox(width: 10),
@@ -938,7 +1136,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           // 7. Address
           _buildDetailCard(
             label: 'Address',
-            value: user.address?.isNotEmpty == true ? user.address! : '—',
+            value: (UserModel.parseAddress(user.address) != null &&
+                    UserModel.parseAddress(user.address)!.isNotEmpty)
+                ? UserModel.parseAddress(user.address)!
+                : '—',
           ),
           const SizedBox(height: 24),
 

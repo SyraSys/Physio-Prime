@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ist_time.dart';
+import '../../../core/widgets/skeleton_loading.dart';
 import '../../appointments/providers/appointments_provider.dart';
 import '../../doctors/presentation/widgets/doctor_card.dart';
 import '../../doctors/providers/doctors_provider.dart';
@@ -870,17 +871,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: displayDoctors.map((doc) => DoctorCard(doctor: doc)).toList(),
                     );
                   },
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: CircularProgressIndicator(color: Color(0xFF0891B2)),
+                  loading: () => Column(
+                    children: List.generate(
+                      2,
+                      (_) => const Padding(
+                        padding: EdgeInsets.only(bottom: 14),
+                        child: DoctorCardSkeleton(),
+                      ),
                     ),
                   ),
                   error: (error, stack) => const SizedBox.shrink(),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 120),
             ],
           ),
         ),

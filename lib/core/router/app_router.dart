@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -433,61 +435,103 @@ class ScaffoldWithNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = navigationShell.currentIndex;
+    final mediaQuery = MediaQuery.of(context);
+    final viewPaddingBottom = mediaQuery.viewPadding.bottom;
+    final paddingBottom = mediaQuery.padding.bottom;
+    final systemBottomInset = math.max(viewPaddingBottom, paddingBottom);
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
+    // Responsive bottom padding for pixel-perfect positioning across Android, iOS & all platforms:
+    // 1. Android:
+    //    - If systemBottomInset is reported (>= 12dp):
+    //        * 3-button navigation bar (~48dp): float 10dp above it -> systemBottomInset + 10.0 (58dp).
+    //        * Gesture navigation pill (~16-24dp): float 8dp above it -> systemBottomInset + 8.0 (~24-32dp).
+    //    - If systemBottomInset is 0 (classic Xiaomi/MIUI/Redmi/Samsung 3-button navigation bug where
+    //      the OS renders an opaque 48dp 3-button navigation bar but fails to dispatch window insets to Flutter):
+    //      We MUST NOT fall back to 16dp (which causes the navbar to be submerged by 32dp behind the 48dp bar).
+    //      Instead, we guarantee a safe minimum of 58dp (48dp 3-button bar + 10dp floating clearance).
+    // 2. iOS:
+    //    - Home Indicator devices (iPhone X through 16): systemBottomInset is 34pt.
+    //      Float 8pt above it -> 34 + 8 = 42pt.
+    //    - Devices with physical Home button (iPhone SE, iPhone 8): systemBottomInset is 0pt.
+    //      Float 16pt above screen bottom.
+    // 3. Web / Desktop:
+    //    - Default to 16pt floating margin.
+    final double effectiveBottomPadding;
+    if (isAndroid) {
+      if (systemBottomInset >= 40.0) {
+        // Standard Android 3-button bar that properly reported insets (~48dp)
+        effectiveBottomPadding = systemBottomInset + 10.0;
+      } else if (systemBottomInset >= 12.0) {
+        // Android gesture navigation pill (~16-24dp)
+        effectiveBottomPadding = systemBottomInset + 8.0;
+      } else {
+        // Xiaomi / Redmi / MIUI 3-button bar reporting 0 insets
+        effectiveBottomPadding = 48.0 + 10.0; // 58.0 dp: sits 10dp above 48dp bar
+      }
+    } else if (isIOS) {
+      effectiveBottomPadding = systemBottomInset > 0
+          ? (systemBottomInset + 8.0)
+          : 16.0;
+    } else {
+      effectiveBottomPadding = systemBottomInset > 0
+          ? (systemBottomInset + 8.0)
+          : 16.0;
+    }
 
     return Scaffold(
       extendBody: true,
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF8FAFB),
       // Stateful IndexedStack preserves all screen instances, scroll offsets,
       // and state, enabling instant 0ms switching with zero jank or rebuild overhead.
       body: navigationShell,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: RepaintBoundary(
-            child: Container(
-              height: 66,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(33),
-                border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x140F172A),
-                    blurRadius: 20,
-                    spreadRadius: 0,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  _NavBarItem(
-                    icon: LucideIcons.home,
-                    label: 'Home',
-                    isSelected: selectedIndex == 0,
-                    onTap: () => _onItemTapped(0),
-                  ),
-                  _NavBarItem(
-                    icon: LucideIcons.calendar,
-                    label: 'Bookings',
-                    isSelected: selectedIndex == 1,
-                    onTap: () => _onItemTapped(1),
-                  ),
-                  _NavBarItem(
-                    icon: LucideIcons.messageSquare,
-                    label: 'History',
-                    isSelected: selectedIndex == 2,
-                    onTap: () => _onItemTapped(2),
-                  ),
-                  _NavBarItem(
-                    icon: LucideIcons.user,
-                    label: 'Profile',
-                    isSelected: selectedIndex == 3,
-                    onTap: () => _onItemTapped(3),
-                  ),
-                ],
-              ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, effectiveBottomPadding),
+        child: RepaintBoundary(
+          child: Container(
+            height: 66,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(33),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x140F172A),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _NavBarItem(
+                  icon: LucideIcons.home,
+                  label: 'Home',
+                  isSelected: selectedIndex == 0,
+                  onTap: () => _onItemTapped(0),
+                ),
+                _NavBarItem(
+                  icon: LucideIcons.calendar,
+                  label: 'Bookings',
+                  isSelected: selectedIndex == 1,
+                  onTap: () => _onItemTapped(1),
+                ),
+                _NavBarItem(
+                  icon: LucideIcons.messageSquare,
+                  label: 'History',
+                  isSelected: selectedIndex == 2,
+                  onTap: () => _onItemTapped(2),
+                ),
+                _NavBarItem(
+                  icon: LucideIcons.user,
+                  label: 'Profile',
+                  isSelected: selectedIndex == 3,
+                  onTap: () => _onItemTapped(3),
+                ),
+              ],
             ),
           ),
         ),

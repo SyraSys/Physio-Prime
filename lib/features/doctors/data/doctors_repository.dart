@@ -239,6 +239,26 @@ class DoctorsRepository {
       if (_detailCache.containsKey(slugOrId)) {
         return _detailCache[slugOrId]!;
       }
+
+      // If direct request 404s (e.g. slug format mismatch or appointment holds UUID/id),
+      // look up the doctor in the doctors directory
+      try {
+        final allDocs = await getDoctors();
+        final normalizedTarget = slugOrId.toLowerCase().trim();
+        final found = allDocs.where((d) =>
+            d.slug.toLowerCase() == normalizedTarget ||
+            d.id.toLowerCase() == normalizedTarget ||
+            d.slug.replaceAll(RegExp(r'-\d+$'), '') == normalizedTarget.replaceAll(RegExp(r'-\d+$'), '')
+        ).firstOrNull;
+
+        if (found != null) {
+          _detailCache[slugOrId] = found;
+          _detailCache[found.slug] = found;
+          _detailCache[found.id] = found;
+          return found;
+        }
+      } catch (_) {}
+
       rethrow;
     }
   }
